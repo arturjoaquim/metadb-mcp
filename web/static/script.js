@@ -1,0 +1,281 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('connectionForm');
+    const btnConnect = document.getElementById('btnConnect');
+    const btnSync = document.getElementById('btnSync');
+    const tablesContainer = document.getElementById('tablesContainer');
+    const totalTablesCount = document.getElementById('totalTablesCount');
+    const selectedTablesCount = document.getElementById('selectedTablesCount');
+    const alertBox = document.getElementById('alertBox');
+    const alertMessage = document.getElementById('alertMessage');
+    const alertIcon = document.getElementById('alertIcon');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingTitle = document.getElementById('loadingTitle');
+    const loadingDesc = document.getElementById('loadingDesc');
+    const savedConnections = document.getElementById('savedConnections');
+    const tableSearch = document.getElementById('tableSearch');
+    const chkSelectAll = document.getElementById('chkSelectAll');
+
+    let availableTables = [];
+    let syncedTables = [];
+    let selectedTables = new Set();
+    let connectionsData = [];
+
+    // Carregar conexões salvas
+    async function loadConnections() {
+        try {
+            const response = await fetch('/api/connections');
+            const data = await response.json();
+            connectionsData = data.connections;
+            
+            connectionsData.forEach(conn => {
+                const option = document.createElement('option');
+                option.value = conn.name;
+                option.textContent = conn.name;
+                savedConnections.appendChild(option);
+            });
+        } catch (e) {
+            console.error("Erro ao carregar conexões", e);
+        }
+    }
+
+    savedConnections.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (!val) {
+            document.getElementById('connName').value = '';
+            document.getElementById('dbHost').value = '';
+            document.getElementById('dbPort').value = '';
+            document.getElementById('dbName').value = '';
+            document.getElementById('dbUser').value = '';
+            document.getElementById('dbPass').value = '';
+            return;
+        }
+        const conn = connectionsData.find(c => c.name === val);
+        if (conn) {
+            document.getElementById('connName').value = conn.name;
+            document.getElementById('dbType').value = conn.db_type;
+            document.getElementById('dbHost').value = conn.host;
+            document.getElementById('dbPort').value = conn.port;
+            document.getElementById('dbName').value = conn.dbname;
+            document.getElementById('dbUser').value = conn.user;
+            document.getElementById('dbPass').value = '';
+            document.getElementById('dbPass').focus();
+        }
+    });
+
+    loadConnections();
+
+    function showAlert(message, type = 'error') {
+        alertBox.className = `mt-4 rounded-lg p-4 text-sm flex items-start shadow-lg ${
+            type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 
+            'bg-green-500/10 text-green-400 border border-green-500/20'
+        }`;
+        alertIcon.className = `fa-solid mt-0.5 mr-3 ${
+            type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'
+        }`;
+        alertMessage.textContent = message;
+        alertBox.classList.remove('hidden');
+        
+        setTimeout(() => {
+            alertBox.classList.add('hidden');
+        }, 5000);
+    }
+
+    function showLoading(title, desc) {
+        loadingTitle.textContent = title;
+        loadingDesc.textContent = desc;
+        loadingOverlay.classList.remove('hidden');
+    }
+
+    function hideLoading() {
+        loadingOverlay.classList.add('hidden');
+    }
+
+    function getFormData() {
+        return {
+            conn_name: document.getElementById('connName').value,
+            db_type: document.getElementById('dbType').value,
+            host: document.getElementById('dbHost').value,
+            port: parseInt(document.getElementById('dbPort').value, 10),
+            dbname: document.getElementById('dbName').value,
+            user: document.getElementById('dbUser').value,
+            password: document.getElementById('dbPass').value
+        };
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = getFormData();
+        
+        showLoading("Conectando...", `Tentando acessar banco ${data.db_type} em ${data.host}...`);
+        
+        try {
+            const response = await fetch('/api/tables', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.detail || 'Erro ao conectar no banco de dados.');
+            }
+            
+            availableTables = result.tables;
+            syncedTables = result.synced_tables || [];
+            selectedTables.clear();
+            
+            if (chkSelectAll) {
+                chkSelectAll.checked = false;
+            }
+            if (tableSearch) {
+                tableSearch.value = '';
+            }
+            
+            renderTables();
+            
+        } catch (error) {
+            showAlert(error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    });
+
+    function renderTables() {
+        if (availableTables.length === 0) {
+            tablesContainer.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-48 text-gray-500">
+                    <i class="fa-solid fa-triangle-exclamation text-4xl mb-3 text-yellow-600/50"></i>
+                    <p>Nenhuma tabela encontrada no schema do usuário.</p>
+                </div>
+            `;
+            updateCounts();
+            return;
+        }
+
+        tablesContainer.innerHTML = availableTables.map((table, index) => {
+            const isSynced = syncedTables.includes(table);
+            const badge = isSynced ? `<span class="ml-auto text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/30">Sincronizada</span>` : '';
+            return `
+            <div class="table-item-anim flex items-center p-3 rounded-lg hover:bg-gray-700/50 transition-colors border border-transparent hover:border-gray-600/50 cursor-pointer" 
+                 style="animation-delay: ${Math.min(index * 10, 500)}ms"
+                 onclick="document.getElementById('chk-${table}').click()">
+                <input type="checkbox" id="chk-${table}" value="${table}" class="table-checkbox mr-4" onclick="event.stopPropagation()">
+                <i class="fa-solid fa-table text-gray-500 mr-3"></i>
+                <span class="table-name-text text-gray-200 text-sm font-medium tracking-wide">${table}</span>
+                ${badge}
+            </div>
+            `;
+        }).join('');
+
+        document.querySelectorAll('.table-checkbox').forEach(chk => {
+            chk.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    selectedTables.add(e.target.value);
+                } else {
+                    selectedTables.delete(e.target.value);
+                }
+                updateCounts();
+                updateSelectAllState();
+            });
+        });
+
+        updateCounts();
+    }
+
+    if (tableSearch) {
+        tableSearch.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('.table-item-anim').forEach(item => {
+                const tableName = item.querySelector('.table-name-text').textContent.toLowerCase();
+                if (tableName.includes(term)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            updateSelectAllState();
+        });
+    }
+
+    if (chkSelectAll) {
+        chkSelectAll.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            document.querySelectorAll('.table-item-anim').forEach(item => {
+                if (item.style.display !== 'none') {
+                    const chk = item.querySelector('.table-checkbox');
+                    if (chk.checked !== isChecked) {
+                        chk.checked = isChecked;
+                        if (isChecked) {
+                            selectedTables.add(chk.value);
+                        } else {
+                            selectedTables.delete(chk.value);
+                        }
+                    }
+                }
+            });
+            updateCounts();
+        });
+    }
+
+    function updateSelectAllState() {
+        if (!chkSelectAll) return;
+        
+        const visibleItems = Array.from(document.querySelectorAll('.table-item-anim')).filter(item => item.style.display !== 'none');
+        if (visibleItems.length === 0) {
+            chkSelectAll.checked = false;
+            return;
+        }
+        
+        let allChecked = true;
+        visibleItems.forEach(item => {
+            if (!item.querySelector('.table-checkbox').checked) {
+                allChecked = false;
+            }
+        });
+        chkSelectAll.checked = allChecked;
+    }
+
+    function updateCounts() {
+        totalTablesCount.textContent = availableTables.length;
+        selectedTablesCount.textContent = selectedTables.size;
+        
+        if (selectedTables.size > 0) {
+            btnSync.disabled = false;
+            btnSync.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+            btnSync.disabled = true;
+            btnSync.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+    }
+
+    btnSync.addEventListener('click', async () => {
+        if (selectedTables.size === 0) return;
+        
+        const data = getFormData();
+        data.tables = Array.from(selectedTables);
+        
+        showLoading("Sincronizando...", `Extraindo metadados e amostras de ${selectedTables.size} tabelas...`);
+        
+        try {
+            const response = await fetch('/api/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.detail || 'Erro ao sincronizar as tabelas.');
+            }
+            
+            showAlert(result.message, 'success');
+            
+        } catch (error) {
+            showAlert(error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    });
+});

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Control Plane - Metadados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-gray-100 font-inter antialiased min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-gray-800 border-r border-gray-700 hidden md:flex flex-col">
+        <div class="h-16 flex items-center px-6 border-b border-gray-700">
+            <i class="fa-solid fa-database text-blue-500 text-xl mr-3"></i>
+            <h1 class="text-lg font-bold tracking-wider text-white">MCP<span class="text-blue-500">MetaDB</span></h1>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2">
+            <a href="#" class="flex items-center px-4 py-3 bg-blue-600/10 text-blue-400 rounded-lg transition-colors border border-blue-500/20 shadow-sm shadow-blue-500/10">
+                <i class="fa-solid fa-plug mr-3 w-5 text-center"></i> Conexões
+            </a>
+            <a href="#" class="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700/50 hover:text-white rounded-lg transition-colors">
+                <i class="fa-solid fa-server mr-3 w-5 text-center"></i> Status MCP
+            </a>
+        </nav>
+        <div class="p-4 border-t border-gray-700 text-xs text-gray-500 text-center">
+            v1.0.0 &copy; 2026
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden">
+        <header class="h-16 bg-gray-800/50 backdrop-blur-md border-b border-gray-700 flex items-center justify-between px-8 z-10">
+            <h2 class="text-xl font-semibold text-white">Gerenciador de Sincronização</h2>
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-full border border-green-500/20 text-sm font-medium">
+                    <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                    <span>Servidor Ativo</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8">
+            <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <!-- Coluna Formulário -->
+                <div class="lg:col-span-4 space-y-6">
+                    <div class="glass-panel p-6 rounded-2xl relative overflow-hidden group">
+                        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <h3 class="text-lg font-medium text-white mb-6 flex items-center">
+                            <i class="fa-solid fa-link text-blue-400 mr-2"></i> Nova Conexão
+                        </h3>
+                        
+                        <form id="connectionForm" class="space-y-4 relative z-10">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Carregar Conexão Salva</label>
+                                <div class="relative">
+                                    <select id="savedConnections" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none">
+                                        <option value="">-- Nova Conexão --</option>
+                                    </select>
+                                    <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-xs"></i>
+                                </div>
+                            </div>
+                            
+                            <hr class="border-gray-700 my-4" />
+
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Nome da Conexão (Apelido)</label>
+                                <input type="text" id="connName" required placeholder="Ex: Producao_Oracle" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-600">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Tipo de Banco</label>
+                                <div class="relative">
+                                    <select id="dbType" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none">
+                                        <option value="oracle">Oracle Database</option>
+                                        <option value="postgresql">PostgreSQL</option>
+                                    </select>
+                                    <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none text-xs"></i>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="col-span-2">
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">Host</label>
+                                    <input type="text" id="dbHost" required placeholder="localhost" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-600">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">Porta</label>
+                                    <input type="number" id="dbPort" required placeholder="1521" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-600">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Service Name / DB Name</label>
+                                <input type="text" id="dbName" required placeholder="ORCL" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-600">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">Usuário</label>
+                                    <input type="text" id="dbUser" required placeholder="admin" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-600">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">Senha <span class="text-gray-600 text-[10px] ml-1">(Não salva)</span></label>
+                                    <input type="password" id="dbPass" required placeholder="••••••••" class="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-gray-600">
+                                </div>
+                            </div>
+                            
+                            <button type="submit" id="btnConnect" class="w-full mt-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-medium py-2.5 rounded-lg shadow-lg shadow-blue-500/25 transition-all transform hover:-translate-y-0.5 flex justify-center items-center">
+                                <span id="btnConnectText">Listar Tabelas</span>
+                                <i id="btnConnectIcon" class="fa-solid fa-arrow-right ml-2 text-sm"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Alertas -->
+                    <div id="alertBox" class="hidden rounded-lg p-4 text-sm flex items-start shadow-lg">
+                        <i id="alertIcon" class="fa-solid mt-0.5 mr-3"></i>
+                        <div id="alertMessage"></div>
+                    </div>
+                </div>
+
+                <!-- Coluna Tabelas -->
+                <div class="lg:col-span-8 flex flex-col h-[calc(100vh-10rem)]">
+                    <div class="glass-panel p-6 rounded-2xl flex-1 flex flex-col relative overflow-hidden">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-medium text-white flex items-center">
+                                <i class="fa-solid fa-table-list text-purple-400 mr-2"></i> Tabelas Disponíveis
+                            </h3>
+                            <div class="flex items-center space-x-3">
+                                <div class="relative hidden lg:block">
+                                    <input type="text" id="tableSearch" placeholder="Pesquisar tabela..." class="bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none w-48 pl-8 placeholder-gray-500 transition-all">
+                                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
+                                </div>
+                                <button id="btnSync" disabled class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium py-2 px-5 rounded-lg shadow-lg shadow-purple-500/25 transition-all opacity-50 cursor-not-allowed flex items-center">
+                                    <i class="fa-solid fa-rotate mr-2"></i> Sincronizar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center p-2 mb-2 border-b border-gray-700/50">
+                            <input type="checkbox" id="chkSelectAll" class="mr-3 ml-1 rounded border-gray-600 text-purple-500 focus:ring-purple-500 bg-gray-800 cursor-pointer">
+                            <label for="chkSelectAll" class="text-sm text-gray-300 cursor-pointer select-none">Selecionar Todas as Visíveis</label>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar border border-gray-700/50 rounded-xl bg-gray-900/30">
+                            <div id="tablesContainer" class="p-2 space-y-1">
+                                <div class="flex flex-col items-center justify-center h-48 text-gray-500">
+                                    <i class="fa-regular fa-folder-open text-4xl mb-3 text-gray-600"></i>
+                                    <p>Conecte-se ao banco para visualizar as tabelas.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 pt-4 border-t border-gray-700/50 flex justify-between items-center text-sm">
+                            <span class="text-gray-400">Total: <span id="totalTablesCount" class="text-white font-medium">0</span></span>
+                            <span class="text-gray-400">Selecionadas: <span id="selectedTablesCount" class="text-purple-400 font-medium">0</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de Loading -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-50 hidden flex flex-col justify-center items-center">
+        <div class="relative w-24 h-24 mb-6">
+            <div class="absolute inset-0 border-4 border-gray-700 rounded-full"></div>
+            <div class="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <i class="fa-solid fa-database text-2xl text-blue-400 animate-pulse"></i>
+            </div>
+        </div>
+        <h2 id="loadingTitle" class="text-xl font-bold text-white mb-2">Processando...</h2>
+        <p id="loadingDesc" class="text-gray-400 max-w-sm text-center">Aguarde enquanto os dados estão sendo processados.</p>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
