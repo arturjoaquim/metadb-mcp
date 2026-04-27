@@ -1,6 +1,6 @@
-# MetaDB Control Plane (Bridge Database MCP)
+# MetaDB MCP (Meta Database Model Context Protocol)
 
-O **MetaDB Control Plane** é um servidor local que implementa o Model Context Protocol (MCP). Ele atua como uma ponte (bridge) entre seus bancos de dados (Oracle e PostgreSQL) e assistentes de IA (como Cursor, Kiro, Cline, etc).
+O **MetaDB MCP** é um servidor local que implementa o Model Context Protocol (MCP). Ele atua como uma ponte (bridge) entre seus bancos de dados (Oracle e PostgreSQL) e assistentes de IA (como Cursor, Kiro, Cline, etc).
 
 Em vez de expor suas credenciais ou permitir acesso direto ao banco de dados pela IA, este projeto extrai e armazena metadados (esquemas, tabelas, colunas, chaves primárias/estrangeiras, índices e amostras de domínio) de forma segura em um banco SQLite local (`mcp_cache.db`). A IA então consulta esses metadados via SSE (Server-Sent Events) usando as ferramentas (tools) disponibilizadas pelo protocolo.
 
