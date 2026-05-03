@@ -3,6 +3,17 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] - 2026-05-03
+### Changed
+- Transporte MCP migrado de SSE (Server-Sent Events) para stdio nativo.
+- Servidor web (dashboard) e servidor MCP agora executam no mesmo processo Python, em threads separadas.
+- Stdout e stderr globais são redirecionados para arquivo de log para evitar contaminação do protocolo stdio.
+- Argumentos de linha de comando (`--host`, `--port`, `--log-file`) adicionados para configuração flexível.
+
+### Removed
+- Montagem SSE removida do FastAPI (`/mcp/sse`).
+- Script proxy `sse_proxy.py` removido (obsoleto com stdio nativo).
+
 ## [1.1.0] - 2026-04-27
 ### Added
 - Script proxy `sse_proxy.py` (`utils-for-client/sse_proxy.py`) e documentação de integração com *stdio* para editores que não suportam conexão nativa via SSE.

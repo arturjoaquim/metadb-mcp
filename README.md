@@ -1,29 +1,46 @@
 # MetaDB MCP (Meta Database Model Context Protocol)
 
-O **MetaDB MCP** é um servidor local que implementa o Model Context Protocol (MCP). Ele atua como uma ponte (bridge) entre seus bancos de dados (Oracle e PostgreSQL) e assistentes de IA (como Cursor, Kiro, Cline, etc).
+O **MetaDB MCP** é um servidor local que implementa o Model Context Protocol (MCP). Ele atua como uma ponte (bridge) entre seus bancos de dados (Oracle e PostgreSQL) e assistentes de IA (como Cursor, Kiro, Cline, Gemini CLI, etc).
 
-Em vez de expor suas credenciais ou permitir acesso direto ao banco de dados pela IA, este projeto extrai e armazena metadados (esquemas, tabelas, colunas, chaves primárias/estrangeiras, índices e amostras de domínio) de forma segura em um banco SQLite local (`mcp_cache.db`). A IA então consulta esses metadados via SSE (Server-Sent Events) usando as ferramentas (tools) disponibilizadas pelo protocolo.
+Em vez de expor suas credenciais ou permitir acesso direto ao banco de dados pela IA, este projeto extrai e armazena metadados (esquemas, tabelas, colunas, chaves primárias/estrangeiras, índices e amostras de domínio) de forma segura em um banco SQLite local (`mcp_cache.db`). A IA então consulta esses metadados via **stdio** (transporte padrão do MCP) usando as ferramentas (tools) disponibilizadas pelo protocolo.
 
 ## 🚀 Como Utilizar o Projeto
 
 ### 1. Iniciar o Servidor
+
+O MetaDB MCP inicia **dois componentes no mesmo processo**:
+- **Servidor MCP (stdio)**: comunicação JSON-RPC via stdin/stdout para os editores/agentes de IA.
+- **Dashboard Web**: interface de gerenciamento acessível no navegador.
 
 1. Abra um terminal no diretório raiz do projeto.
 2. Ative o seu ambiente virtual (se aplicável):
    ```bash
    source venv/bin/activate
    ```
-3. Execute o servidor FastAPI através do Uvicorn:
+3. Execute o servidor:
    ```bash
-   uvicorn main:app --host 127.0.0.1 --port 8000
+   python3 main.py
    ```
-   *(Importante: O servidor deve permanecer rodando em background para que a integração com o editor funcione)*
+   *(O processo ficará aguardando mensagens JSON-RPC via stdin — isso é o comportamento esperado do transporte stdio)*
+
+**Argumentos de linha de comando disponíveis:**
+
+| Argumento     | Padrão        | Descrição                          |
+|---------------|---------------|------------------------------------|
+| `--host`      | `127.0.0.1`   | Endereço de bind do servidor web   |
+| `--port`      | `8000`        | Porta do servidor web              |
+| `--log-file`  | `metadb_mcp.log` | Caminho do arquivo de log       |
+
+Exemplo com porta customizada:
+```bash
+python3 main.py --port 9000
+```
 
 ### 2. Sincronizar Tabelas (Painel de Controle)
 
 Antes que a IA possa consultar os metadados, você precisa popular o cache local selecionando explicitamente quais dados devem ser liberados:
 
-1. Acesse o dashboard no seu navegador: `http://127.0.0.1:8000`.
+1. Acesse o dashboard no seu navegador: `http://127.0.0.1:8000` (ou a porta configurada).
 2. Configure sua conexão com o banco de dados informando as credenciais. **Atenção:** as senhas são utilizadas apenas em memória durante a extração e nunca são salvas.
 3. Clique em **Listar Tabelas** para carregar a estrutura do banco.
 4. Selecione as tabelas cujo contexto você deseja disponibilizar.
@@ -34,66 +51,59 @@ Antes que a IA possa consultar os metadados, você precisa popular o cache local
 
 ## 🔌 Configuração do Editor / IDE
 
-Nosso servidor expõe os metadados via **SSE** (`http://127.0.0.1:8000/mcp/sse`). Siga as instruções abaixo para conectar o seu assistente de IA.
+O MetaDB MCP utiliza transporte **stdio** — o padrão mais amplamente suportado pelos clientes MCP. O editor inicia o processo `python3 main.py` e se comunica via stdin/stdout.
 
 ### Cursor IDE
 
-O Cursor possui suporte nativo para adicionar servidores MCP:
-
 1. Abra as **Cursor Settings** (Configurações).
-2. Vá até a aba **Features** -> seção **MCP Servers**.
+2. Vá até a aba **Features** → seção **MCP Servers**.
 3. Clique em **+ Add new MCP server**.
 4. Preencha os dados:
    - **Name**: `bridge-db-mcp` (ou `MetaDB-Control-Plane`)
-   - **Type**: `sse`
-   - **URL**: `http://127.0.0.1:8000/mcp/sse`
-5. Salve e verifique se o status consta como "Connected" (bolinha verde indicando sucesso).
+   - **Type**: `command`
+   - **Command**: `python3 /caminho/absoluto/para/main.py`
+5. Salve e verifique se o status consta como "Connected".
 
 ### Kiro / Cline / Roo Code / Agentes Similares
 
-Para agentes que utilizam interfaces ou arquivos JSON de configuração:
+Para agentes que utilizam arquivos JSON de configuração:
 
-**Opção A: Via Interface (ex: Kiro)**
-1. Abra as configurações de MCP do agente.
-2. Clique em **Add MCP Server**.
-3. Selecione o transporte: **SSE**.
-4. URL: `http://127.0.0.1:8000/mcp/sse`
-
-**Opção B: Via Arquivo JSON (`mcp_settings.json` ou similar)**
-Adicione a seguinte entrada ao arquivo de configuração do seu agente:
 ```json
 {
   "mcpServers": {
     "bridge-db-mcp": {
-      "type": "sse",
-      "url": "http://127.0.0.1:8000/mcp/sse"
+      "command": "python3",
+      "args": ["/caminho/absoluto/para/main.py"],
+      "cwd": "/caminho/absoluto/para/diretorio/do/projeto"
     }
   }
 }
 ```
 
-### Editores sem suporte a SSE (Uso de Stdio Proxy)
+> **Nota:** O `cwd` é importante para que o servidor encontre os diretórios `web/` e o banco `mcp_cache.db`.
 
-Caso o seu editor de código ou assistente de IA não ofereça suporte a conexões MCP via SSE (Server-Sent Events) e exija a comunicação via `stdio`, você pode utilizar o proxy fornecido com o projeto.
-O script `utils-for-client/sse_proxy.py` atua como um tradutor, redirecionando as mensagens stdio do editor para a URL SSE do servidor local.
+### Gemini CLI
 
-Para configurá-lo (assumindo que o servidor FastAPI já está rodando), configure seu MCP para usar comandos em vez de URLs:
-
-**No Cursor ou via Interface:**
-- **Type**: `command`
-- **Command**: `python` (ou o caminho completo para o seu interpretador Python)
-- **Args**: `caminho/absoluto/para/utils-for-client/sse_proxy.py`
-
-**Via Arquivo JSON (`mcp_settings.json`):**
 ```json
 {
   "mcpServers": {
-    "bridge-db-mcp-stdio": {
-      "command": "python",
-      "args": ["/caminho/absoluto/para/utils-for-client/sse_proxy.py"]
+    "bridge-db-mcp": {
+      "command": "python3",
+      "args": ["/caminho/absoluto/para/main.py"]
     }
   }
 }
+```
+
+---
+
+## 📋 Logs
+
+Todas as saídas do servidor web (Uvicorn), bibliotecas e código do dashboard são redirecionadas para um arquivo de log. Por padrão, o arquivo é `metadb_mcp.log` no diretório do projeto.
+
+Para acompanhar os logs em tempo real:
+```bash
+tail -f metadb_mcp.log
 ```
 
 ---

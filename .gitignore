@@ -3,3 +3,4 @@ __pycache__/
 venv/
 .env
 mcp_cache.db
+metadb_mcp.log

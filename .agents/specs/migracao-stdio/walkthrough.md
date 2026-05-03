@@ -1,3 +1,119 @@
+# Walkthrough — Migração SSE → stdio (v2.0.0)
+
+## Resumo
+
+Migração completa do transporte MCP de **SSE (Server-Sent Events)** para **stdio nativo**, mantendo o dashboard web e o servidor MCP no mesmo processo Python com isolamento de stdout.
+
+## Alterações Realizadas
+
+### [main.py](file:///home/artur/ambiente-de-trabalho/workspace_python/mcp_metadb/main.py) — Reescrita completa
+
+- **Removida** a montagem SSE (`app.mount("/mcp", mcp.sse_app())`)
+- **Adicionado** argparse com `--host`, `--port` e `--log-file`
+- **Implementado** isolamento de stdout:
+  - `sys.stdin` e `sys.stdout` originais são capturados antes de qualquer operação
+  - `sys.stdout` e `sys.stderr` globais são redirecionados para arquivo de log
+  - O transporte stdio do MCP recebe as referências originais via `anyio.wrap_file()`
+- **Servidor web** roda em thread daemon (`_run_web_server()`)
+- **Servidor MCP** roda na thread principal (`_run_stdio_mcp()`)
+
+```diff:main.py
+from fastapi import FastAPI, Request, Form, Depends, BackgroundTasks, HTTPException
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+import uvicorn
+
+from core.database import db_manager
+from core.mcp_server import mcp
+
+app = FastAPI(title="Control Plane Metadados MCP")
+
+app.mount("/static", StaticFiles(directory="web/static"), name="static")
+templates = Jinja2Templates(directory="web/templates")
+
+
+class ConnectionRequest(BaseModel):
+    conn_name: str
+    db_type: str
+    host: str
+    port: int
+    user: str
+    password: str
+    dbname: str
+
+
+class SyncRequest(BaseModel):
+    conn_name: str
+    db_type: str
+    host: str
+    port: int
+    user: str
+    password: str
+    dbname: str
+    tables: List[str]
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request=request, name="index.html", context={"request": request}
+    )
+
+
+@app.get("/api/connections")
+async def get_connections() -> Dict[str, List[Dict[str, Any]]]:
+    conns = db_manager.get_connections()
+    return {"connections": conns}
+
+
+@app.post("/api/tables")
+async def get_tables(req: ConnectionRequest) -> Dict[str, Any]:
+    if not db_manager.test_connection(
+        req.db_type, req.host, req.port, req.user, req.password, req.dbname
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Falha na conexão com o banco de dados. Verifique as credenciais.",
+        )
+
+    tables = db_manager.get_all_tables(
+        req.db_type, req.host, req.port, req.user, req.password, req.dbname
+    )
+    synced_tables = db_manager.get_synced_tables_by_name(req.conn_name)
+    return {"tables": tables, "synced_tables": synced_tables}
+
+
+@app.post("/api/sync")
+async def sync_selected_tables(req: SyncRequest) -> Dict[str, str]:
+    try:
+        db_manager.sync_tables(
+            conn_name=req.conn_name,
+            tables_to_sync=req.tables,
+            db_type=req.db_type,
+            host=req.host,
+            port=req.port,
+            user=req.user,
+            password=req.password,
+            dbname=req.dbname,
+        )
+        return {
+            "status": "success",
+            "message": f"{len(req.tables)} tabelas sincronizadas com sucesso.",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- MCP SSE Server Transport ---
+# Montamos o app gerado pelo FastMCP
+app.mount("/mcp", mcp.sse_app())
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+===
 """Ponto de entrada principal do MetaDB MCP.
 
 Inicia dois componentes no mesmo processo Python:
@@ -263,3 +379,43 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+```
+
+---
+
+### [sse_proxy.py](file:///home/artur/ambiente-de-trabalho/workspace_python/mcp_metadb/utils-for-client/sse_proxy.py) — Removido
+
+O proxy SSE→stdio se tornou obsoleto com a adoção de stdio nativo.
+
+---
+
+### [README.md](file:///home/artur/ambiente-de-trabalho/workspace_python/mcp_metadb/README.md) — Reescrito
+
+- Toda documentação atualizada para refletir transporte stdio
+- Instruções de configuração para Cursor, Kiro/Cline/Roo Code e Gemini CLI
+- Nova seção sobre logs e argumentos de linha de comando
+- Removidas referências ao SSE e ao proxy
+
+---
+
+### [CHANGELOG.md](file:///home/artur/ambiente-de-trabalho/workspace_python/mcp_metadb/CHANGELOG.md) — Nova versão 2.0.0
+
+Breaking change documentado com categorias `Changed` e `Removed`.
+
+---
+
+### [.gitignore](file:///home/artur/ambiente-de-trabalho/workspace_python/mcp_metadb/.gitignore) — Atualizado
+
+Adicionado `metadb_mcp.log`.
+
+---
+
+## Verificação
+
+| Teste | Resultado |
+|-------|-----------|
+| Sintaxe do `main.py` (AST parse) | ✅ OK |
+| Processo inicia sem saída no stdout | ✅ OK (exit code 124 = timeout esperado) |
+| Dashboard web (`GET /`) | ✅ HTTP 200 |
+| API (`GET /api/connections`) | ✅ JSON válido retornado |
+| Isolamento de stdout (nenhum log vazou) | ✅ Verificado |
