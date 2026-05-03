@@ -64,3 +64,14 @@ class SyncSample(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     table_id = Column(Integer, ForeignKey("sync_tables.id"))
     row_data = Column(Text)  # JSON string of row
+
+
+class AppConfig(Base):
+    """Configurações internas da aplicação armazenadas no banco criptografado."""
+
+    __tablename__ = "app_config"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key = Column(String(255), unique=True, nullable=False)
+    value = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+

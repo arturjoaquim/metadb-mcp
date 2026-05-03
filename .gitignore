@@ -4,3 +4,5 @@ venv/
 .env
 mcp_cache.db
 metadb_mcp.log
+*.db-journal
+*.db-wal

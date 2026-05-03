@@ -15,23 +15,32 @@ import logging
 import sys
 import threading
 from io import TextIOWrapper
-from typing import Any, Dict, List, TextIO
+from typing import Any, Dict, List, TextIO, Optional
 
 import anyio
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends, Response, Cookie
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from core.database import db_manager
+from core import database
+from core.database import initialize_db_manager, secure_connection
+from core.auth_service import auth_service, AuthenticationError
 from core.mcp_server import mcp
 from mcp.server.stdio import stdio_server
 
 # ---------------------------------------------------------------------------
 # Modelos de requisição
 # ---------------------------------------------------------------------------
+
+
+class AuthRequest(BaseModel):
+    """Modelo para autenticação."""
+
+    username: str
+    password: str
 
 
 class ConnectionRequest(BaseModel):
@@ -77,17 +86,108 @@ async def index(request: Request) -> HTMLResponse:
     )
 
 
-@app.get("/api/connections")
+# ---------------------------------------------------------------------------
+# Autenticação e Segurança
+# ---------------------------------------------------------------------------
+
+async def require_auth(
+    request: Request, auth_token: Optional[str] = Cookie(None)
+) -> dict[str, Any]:
+    """Dependência para validar o token JWT e o estado do banco."""
+    if not auth_token:
+        raise HTTPException(status_code=401, detail="Não autenticado.")
+    
+    payload = auth_service.verify_token(auth_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado.")
+    
+    if not secure_connection.is_unlocked:
+        raise HTTPException(status_code=423, detail="Banco de dados está bloqueado.")
+        
+    return payload
+
+
+@app.get("/api/auth/status")
+async def auth_status() -> Dict[str, Any]:
+    """Retorna o estado atual da autenticação e do banco."""
+    return {
+        "db_exists": auth_service.database_exists(),
+        "is_unlocked": secure_connection.is_unlocked,
+    }
+
+
+@app.post("/api/auth/register")
+async def register(req: AuthRequest, response: Response) -> Dict[str, str]:
+    """Cadastra um novo usuário e inicializa o banco criptografado."""
+    try:
+        token = auth_service.register(req.username, req.password)
+        response.set_cookie(
+            key="auth_token",
+            value=token,
+            httponly=True,
+            samesite="lax",
+            max_age=auth_service.JWT_EXPIRATION_HOURS * 3600,
+        )
+        # Inicializa o db_manager agora que o banco está criado e desbloqueado
+        initialize_db_manager()
+        return {"status": "success", "message": "Banco criado com sucesso."}
+    except AuthenticationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/auth/login")
+async def login(req: AuthRequest, response: Response) -> Dict[str, str]:
+    """Autentica o usuário e desbloqueia o banco."""
+    try:
+        token = auth_service.login(req.username, req.password)
+        response.set_cookie(
+            key="auth_token",
+            value=token,
+            httponly=True,
+            samesite="lax",
+            max_age=auth_service.JWT_EXPIRATION_HOURS * 3600,
+        )
+        # Inicializa o db_manager agora que o banco foi desbloqueado
+        initialize_db_manager()
+        return {"status": "success", "message": "Login efetuado com sucesso."}
+    except AuthenticationError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+
+@app.post("/api/auth/logout")
+async def logout(response: Response) -> Dict[str, str]:
+    """Trava o banco e remove o cookie."""
+    secure_connection.lock()
+    response.delete_cookie(key="auth_token")
+    return {"status": "success", "message": "Logout efetuado."}
+
+
+@app.get("/api/auth/verify", dependencies=[Depends(require_auth)])
+async def verify_auth() -> Dict[str, str]:
+    """Verifica se o usuário está autenticado (usado no carregamento da página)."""
+    return {"status": "success", "message": "Autenticado."}
+
+
+# ---------------------------------------------------------------------------
+# API de Dados (Protegida)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/connections", dependencies=[Depends(require_auth)])
 async def get_connections() -> Dict[str, List[Dict[str, Any]]]:
     """Retorna todas as conexões salvas no banco local."""
-    conns: list[dict[str, Any]] = db_manager.get_connections()
+    if not database.db_manager:
+        raise HTTPException(status_code=500, detail="Database manager não inicializado.")
+    conns: list[dict[str, Any]] = database.db_manager.get_connections()
     return {"connections": conns}
 
 
-@app.post("/api/tables")
+@app.post("/api/tables", dependencies=[Depends(require_auth)])
 async def get_tables(req: ConnectionRequest) -> Dict[str, Any]:
     """Lista tabelas do banco remoto e indica quais já estão sincronizadas."""
-    if not db_manager.test_connection(
+    if not database.db_manager:
+        raise HTTPException(status_code=500, detail="Database manager não inicializado.")
+
+    if not database.db_manager.test_connection(
         req.db_type, req.host, req.port, req.user, req.password, req.dbname
     ):
         raise HTTPException(
@@ -95,18 +195,20 @@ async def get_tables(req: ConnectionRequest) -> Dict[str, Any]:
             detail="Falha na conexão com o banco de dados. Verifique as credenciais.",
         )
 
-    tables: list[str] = db_manager.get_all_tables(
+    tables: list[str] = database.db_manager.get_all_tables(
         req.db_type, req.host, req.port, req.user, req.password, req.dbname
     )
-    synced_tables: list[str] = db_manager.get_synced_tables_by_name(req.conn_name)
+    synced_tables: list[str] = database.db_manager.get_synced_tables_by_name(req.conn_name)
     return {"tables": tables, "synced_tables": synced_tables}
 
 
-@app.post("/api/sync")
+@app.post("/api/sync", dependencies=[Depends(require_auth)])
 async def sync_selected_tables(req: SyncRequest) -> Dict[str, str]:
     """Sincroniza as tabelas selecionadas para o cache local."""
     try:
-        db_manager.sync_tables(
+        if not database.db_manager:
+            raise HTTPException(status_code=500, detail="Database manager não inicializado.")
+        database.db_manager.sync_tables(
             conn_name=req.conn_name,
             tables_to_sync=req.tables,
             db_type=req.db_type,

@@ -1,11 +1,10 @@
-import os
 import json
 from typing import List, Dict, Any, Optional
-from sqlalchemy import create_engine, inspect, text
-from sqlalchemy.orm import sessionmaker
+
+from sqlalchemy import inspect, text
+from sqlalchemy.orm import Session
 
 from .models import (
-    Base,
     DBConnection,
     SyncTable,
     SyncColumn,
@@ -17,29 +16,33 @@ from .base_adapter import BaseDBAdapter
 from .postgres_adapter import PostgresAdapter
 from .oracle_adapter import OracleAdapter
 
+# Importação local para evitar dependência circular
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .secure_connection import SecureConnectionManager
+
 
 class DatabaseManager:
-    _instance = None
+    """Gerencia operações de negócio sobre o banco de metadados local.
 
-    def __new__(cls) -> "DatabaseManager":
-        if cls._instance is None:
-            cls._instance = super(DatabaseManager, cls).__new__(cls)
-            cls._instance.init_local_db()
-        return cls._instance
+    Recebe uma instância de ``SecureConnectionManager`` por injeção de
+    dependência para obter sessions SQLAlchemy, sem conhecer detalhes
+    de criptografia ou autenticação.
+    """
 
-    def init_local_db(self) -> None:
-        # Configurar SQLite Local
-        db_path = "sqlite:///mcp_cache.db"
-        self.local_engine = create_engine(
-            db_path, connect_args={"check_same_thread": False}
-        )
-        Base.metadata.create_all(self.local_engine)
-        self.SessionLocal = sessionmaker(
-            autocommit=False, autoflush=False, bind=self.local_engine
-        )
+    def __init__(self, secure_conn: "SecureConnectionManager") -> None:
+        """Inicializa o DatabaseManager com a conexão segura.
 
-    def get_session(self) -> Any:
-        return self.SessionLocal()
+        Args:
+            secure_conn: Instância do gerenciador de conexão segura já
+                         desbloqueada.
+        """
+        self._secure_conn = secure_conn
+
+    def get_session(self) -> Session:
+        """Retorna uma nova session SQLAlchemy via SecureConnectionManager."""
+        return self._secure_conn.get_session()
 
     def get_tables(
         self,

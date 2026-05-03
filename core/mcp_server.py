@@ -1,8 +1,7 @@
-import json
 from typing import Optional, List, Tuple, Any
 from mcp.server.fastmcp import FastMCP
+from . import database
 from .database import (
-    db_manager,
     SyncTable,
     SyncColumn,
     SyncIndex,
@@ -11,6 +10,13 @@ from .database import (
 )
 
 mcp = FastMCP("metadb-control-plane")
+
+
+def _require_unlocked() -> Optional[str]:
+    """Retorna mensagem de erro se o banco está locked, None caso contrário."""
+    if not database.secure_connection.is_unlocked or database.db_manager is None:
+        return "⚠️ Banco de dados está bloqueado. Faça login no dashboard web para desbloquear."
+    return None
 
 
 def _validate_tables(
@@ -24,7 +30,7 @@ def _validate_tables(
     if len(tables) > 1:
         options = []
         for t in tables:
-            conn = db_manager.get_dbconnection_by_id(session, t.connection_id)
+            conn = database.db_manager.get_dbconnection_by_id(session, t.connection_id)
             dbname = conn.dbname if conn else "Desconhecido"
             options.append(f"schema: '{t.schema_name}', dbname: '{dbname}'")
         return (
@@ -43,7 +49,11 @@ async def list_sync_tables() -> str:
         Nenhum.
     Retorno:
         Lista formatada com '- schema.tabela'."""
-    session = db_manager.get_session()
+    error = _require_unlocked()
+    if error:
+        return error
+        
+    session = database.db_manager.get_session()
     try:
         tables = session.query(SyncTable).all()
         if not tables:
@@ -67,9 +77,13 @@ async def get_table_columns(
         dbname (Optional[str]): Nome do banco de dados da conexão (útil para desambiguação entre conexões diferentes).
     Retorno:
         Exemplo de Saída: '- id: INTEGER (NOT NULL)' ou mensagem de erro caso não encontrada."""
-    session = db_manager.get_session()
+    error = _require_unlocked()
+    if error:
+        return error
+        
+    session = database.db_manager.get_session()
     try:
-        tables = db_manager.get_tables(session, table_name, schema, dbname)
+        tables = database.db_manager.get_tables(session, table_name, schema, dbname)
         table, error_msg = _validate_tables(session, tables, table_name)
         if error_msg:
             return error_msg
@@ -96,9 +110,13 @@ async def get_table_indexes(
         dbname (Optional[str]): Nome do banco de dados. Opcional, mas recomendado para desambiguação.
     Retorno:
         Lista detalhada de índices com suas colunas ou mensagem caso a tabela não exista."""
-    session = db_manager.get_session()
+    error = _require_unlocked()
+    if error:
+        return error
+        
+    session = database.db_manager.get_session()
     try:
-        tables = db_manager.get_tables(session, table_name, schema, dbname)
+        tables = database.db_manager.get_tables(session, table_name, schema, dbname)
         table, error_msg = _validate_tables(session, tables, table_name)
         if error_msg:
             return error_msg
@@ -128,9 +146,13 @@ async def get_table_constraints(
         dbname (Optional[str]): Nome do banco de dados. Opcional, mas recomendado.
     Retorno:
         Detalhes das constraints, incluindo tabelas e colunas referenciadas em caso de FK."""
-    session = db_manager.get_session()
+    error = _require_unlocked()
+    if error:
+        return error
+        
+    session = database.db_manager.get_session()
     try:
-        tables = db_manager.get_tables(session, table_name, schema, dbname)
+        tables = database.db_manager.get_tables(session, table_name, schema, dbname)
         table, error_msg = _validate_tables(session, tables, table_name)
         if error_msg:
             return error_msg
@@ -166,9 +188,13 @@ async def get_domain_context(
         dbname (Optional[str]): Nome do banco de dados. Opcional, mas recomendado.
     Retorno:
         Dados da amostra em formato JSON ou string, representando as linhas originais."""
-    session = db_manager.get_session()
+    error = _require_unlocked()
+    if error:
+        return error
+        
+    session = database.db_manager.get_session()
     try:
-        tables = db_manager.get_tables(session, table_name, schema, dbname)
+        tables = database.db_manager.get_tables(session, table_name, schema, dbname)
         table, error_msg = _validate_tables(session, tables, table_name)
         if error_msg:
             return error_msg
@@ -193,7 +219,11 @@ async def search_metadata(query: str) -> str:
         query (str): Termo de busca (ex: 'email', 'price', 'customer'). Obrigatório.
     Retorno:
         Lista com as tabelas e colunas que contém o termo pesquisado em seus nomes."""
-    session = db_manager.get_session()
+    error = _require_unlocked()
+    if error:
+        return error
+        
+    session = database.db_manager.get_session()
     try:
         result = []
         search_term = f"%{query}%"

@@ -7,3 +7,10 @@ oracledb
 jinja2
 python-multipart
 pydantic
+sqlcipher3-wheels
+argon2-cffi
+keyring
+keyrings.alt
+PyJWT
+pytest
+httpx

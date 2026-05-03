@@ -20,10 +20,147 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedTables = new Set();
     let connectionsData = [];
 
+    // Elementos de Autenticação
+    const viewLogin = document.getElementById('view-login');
+    const viewRegister = document.getElementById('view-register');
+    const viewDashboard = document.getElementById('view-dashboard');
+    const statusBadge = document.getElementById('statusBadge');
+    const btnLogout = document.getElementById('btnLogout');
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    
+    // Verifica status inicial
+    async function checkAuthStatus() {
+        try {
+            const response = await fetch('/api/auth/status');
+            const data = await response.json();
+            
+            updateViewStatus(data);
+        } catch (e) {
+            console.error("Erro ao verificar status", e);
+        }
+    }
+
+    function updateViewStatus(data) {
+        // Esconde todas as views
+        viewLogin.classList.add('hidden');
+        viewRegister.classList.add('hidden');
+        viewDashboard.classList.add('hidden');
+        
+        if (data.is_unlocked) {
+            viewDashboard.classList.remove('hidden');
+            statusBadge.className = "flex items-center space-x-2 bg-green-500/10 text-green-400 px-3 py-1.5 rounded-full border border-green-500/20 text-sm font-medium";
+            statusBadge.innerHTML = '<i class="fa-solid fa-unlock text-xs"></i><span>Unlocked</span>';
+            btnLogout.classList.remove('hidden');
+            loadConnections();
+        } else if (!data.db_exists) {
+            viewRegister.classList.remove('hidden');
+            statusBadge.className = "flex items-center space-x-2 bg-yellow-500/10 text-yellow-400 px-3 py-1.5 rounded-full border border-yellow-500/20 text-sm font-medium";
+            statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-xs"></i><span>Setup Required</span>';
+            btnLogout.classList.add('hidden');
+        } else {
+            viewLogin.classList.remove('hidden');
+            statusBadge.className = "flex items-center space-x-2 bg-red-500/10 text-red-400 px-3 py-1.5 rounded-full border border-red-500/20 text-sm font-medium";
+            statusBadge.innerHTML = '<i class="fa-solid fa-lock text-xs"></i><span>Locked</span>';
+            btnLogout.classList.add('hidden');
+        }
+    }
+
+    // Formulário de Cadastro
+    if (registerForm) {
+        registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('regUsername').value;
+        const password = document.getElementById('regPassword').value;
+        const confirmPassword = document.getElementById('regConfirmPassword').value;
+        const alertBox = document.getElementById('registerAlert');
+        
+        if (password !== confirmPassword) {
+            alertBox.textContent = "As senhas não coincidem.";
+            alertBox.classList.remove('hidden');
+            return;
+        }
+        
+        alertBox.classList.add('hidden');
+        showLoading("Criando Banco Seguro...", "Gerando chaves e configurando criptografia SQLCipher.");
+        
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await response.json();
+            
+            if (response.ok) {
+                checkAuthStatus();
+            } else {
+                alertBox.textContent = data.detail || "Erro ao cadastrar.";
+                alertBox.classList.remove('hidden');
+            }
+        } catch (error) {
+            alertBox.textContent = "Erro de conexão.";
+            alertBox.classList.remove('hidden');
+        } finally {
+            hideLoading();
+        }
+        });
+    }
+
+    // Formulário de Login
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const alertBox = document.getElementById('loginAlert');
+            
+            alertBox.classList.add('hidden');
+            showLoading("Desbloqueando...", "Validando credenciais e acessando banco seguro.");
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('loginPassword').value = '';
+                    checkAuthStatus();
+                } else {
+                    alertBox.textContent = data.detail || "Credenciais inválidas.";
+                    alertBox.classList.remove('hidden');
+                }
+            } catch (error) {
+                alertBox.textContent = "Erro de conexão.";
+                alertBox.classList.remove('hidden');
+            } finally {
+                hideLoading();
+            }
+        });
+    }
+
+    // Logout
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+        showLoading("Bloqueando...", "Fechando conexões seguras e limpando sessão.");
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            document.getElementById('loginPassword').value = '';
+            checkAuthStatus();
+        } finally {
+            hideLoading();
+        }
+        });
+    }
+
     // Carregar conexões salvas
     async function loadConnections() {
         try {
             const response = await fetch('/api/connections');
+            if (!response.ok) return;
             const data = await response.json();
             connectionsData = data.connections;
             
@@ -38,7 +175,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    savedConnections.addEventListener('change', (e) => {
+    if (savedConnections) {
+        savedConnections.addEventListener('change', (e) => {
         const val = e.target.value;
         if (!val) {
             document.getElementById('connName').value = '';
@@ -60,9 +198,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('dbPass').value = '';
             document.getElementById('dbPass').focus();
         }
-    });
+        });
+    }
 
-    loadConnections();
+    // checkAuthStatus vai chamar loadConnections se unlocked
+    checkAuthStatus();
 
     function showAlert(message, type = 'error') {
         alertBox.className = `mt-4 rounded-lg p-4 text-sm flex items-start shadow-lg ${
@@ -102,7 +242,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    form.addEventListener('submit', async (e) => {
+    if (form) {
+        form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = getFormData();
         
@@ -139,7 +280,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             hideLoading();
         }
-    });
+        });
+    }
 
     function renderTables() {
         if (availableTables.length === 0) {
@@ -249,7 +391,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    btnSync.addEventListener('click', async () => {
+    if (btnSync) {
+        btnSync.addEventListener('click', async () => {
         if (selectedTables.size === 0) return;
         
         const data = getFormData();
@@ -277,5 +420,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             hideLoading();
         }
-    });
+        });
+    }
 });
