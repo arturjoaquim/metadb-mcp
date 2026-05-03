@@ -196,7 +196,7 @@ async def search_metadata(query: str) -> str:
     session = db_manager.get_session()
     try:
         result = []
-        search_term = f"%{{query}}%"
+        search_term = f"%{query}%"
 
         # Buscar tabelas
         tables = (
