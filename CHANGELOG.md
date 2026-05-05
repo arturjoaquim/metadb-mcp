@@ -3,6 +3,14 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [3.2.0] - 2026-05-04
+### Added
+- Seleção dinâmica de porta (`find_free_port`) para o servidor web no `main.py`, permitindo múltiplas execuções simultâneas do MCP sem conflito.
+- Logs aprimorados durante a inicialização do MCP, indicando o endereço exato do dashboard.
+
+### Changed
+- Mensagem de erro de "banco de dados bloqueado" no `mcp_server.py` agora informa a URL exata do dashboard (ex: `http://127.0.0.1:8001`) para facilitar o desbloqueio quando múltiplas instâncias da IDE estão abertas.
+
 ## [3.1.1] - 2026-05-04
 ### Fixed
 - Correção no script do dashboard (`script.js`) para garantir a limpeza completa de formulários e área de visualização de tabelas após o logout, impedindo que dados de conexão permaneçam no DOM (tela) de forma residual.

@@ -1,3 +1,4 @@
+import os
 from typing import Optional, List, Tuple, Any
 from mcp.server.fastmcp import FastMCP
 from . import database
@@ -15,7 +16,8 @@ mcp = FastMCP("metadb-control-plane")
 def _require_unlocked() -> Optional[str]:
     """Retorna mensagem de erro se o banco está locked, None caso contrário."""
     if not database.secure_connection.is_unlocked or database.db_manager is None:
-        return "⚠️ Banco de dados está bloqueado. Faça login no dashboard web para desbloquear."
+        web_url = os.environ.get("METADB_WEB_URL", "http://127.0.0.1:8000")
+        return f"⚠️ Banco de dados está bloqueado. Faça login no dashboard web ({web_url}) para desbloquear."
     return None
 
 

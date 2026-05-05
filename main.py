@@ -12,6 +12,8 @@ stdout original do processo.
 import argparse
 import asyncio
 import logging
+import os
+import socket
 import sys
 import threading
 from io import TextIOWrapper
@@ -231,6 +233,19 @@ async def sync_selected_tables(req: SyncRequest) -> Dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
+def find_free_port(host: str, start_port: int) -> int:
+    """Encontra uma porta TCP livre começando da porta especificada."""
+    port = start_port
+    while port <= 65535:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind((host, port))
+                return port
+            except OSError:
+                port += 1
+    raise OSError("Não há portas livres disponíveis.")
+
+
 def _run_web_server(host: str, port: int) -> None:
     """Inicia o Uvicorn numa thread separada com logs silenciados no stdout.
 
@@ -328,6 +343,11 @@ def main() -> None:
     """
     args: argparse.Namespace = _parse_args()
 
+    # Encontrar uma porta livre dinamicamente para permitir múltiplas instâncias
+    args.port = find_free_port(args.host, args.port)
+    web_url: str = f"http://{args.host}:{args.port}"
+    os.environ["METADB_WEB_URL"] = web_url
+
     # 1. Capturar referências originais ANTES de qualquer redirecionamento
     original_stdin: TextIO = sys.stdin
     original_stdout: TextIO = sys.stdout
@@ -344,6 +364,7 @@ def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         force=True,
     )
+    logging.info("Servidor MCP iniciado. Dashboard web rodando em: %s", web_url)
 
     # 4. Iniciar o servidor web numa thread daemon
     web_thread: threading.Thread = threading.Thread(
