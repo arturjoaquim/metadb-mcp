@@ -3,6 +3,14 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [3.1.1] - 2026-05-04
+### Fixed
+- Correção no script do dashboard (`script.js`) para garantir a limpeza completa de formulários e área de visualização de tabelas após o logout, impedindo que dados de conexão permaneçam no DOM (tela) de forma residual.
+
+## [3.1.0] - 2026-05-04
+### Added
+- Scripts de inicialização automática `start_mcp.sh` (Unix) e `start_mcp.bat` (Windows) para configuração plug-and-play do servidor MCP. Esses scripts criam o ambiente virtual (`venv`) e instalan as dependências automaticamente caso não existam.
+
 ## [3.0.3] - 2026-05-03
 ### Fixed
 - Erro `AttributeError: 'NoneType' object has no attribute 'test_connection'` no `main.py` corrigido ajustando a importação do `db_manager` para refletir sua inicialização tardia de forma correta.

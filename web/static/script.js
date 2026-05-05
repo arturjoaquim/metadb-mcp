@@ -148,7 +148,29 @@ document.addEventListener('DOMContentLoaded', () => {
         showLoading("Bloqueando...", "Fechando conexões seguras e limpando sessão.");
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
-            document.getElementById('loginPassword').value = '';
+            
+            // Limpa formulários para não deixar dados residuais visíveis
+            if (loginForm) loginForm.reset();
+            if (form) form.reset();
+            
+            // Reseta estado das tabelas
+            availableTables = [];
+            syncedTables = [];
+            selectedTables.clear();
+            
+            if (chkSelectAll) chkSelectAll.checked = false;
+            if (tableSearch) tableSearch.value = '';
+            
+            if (tablesContainer) {
+                tablesContainer.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-48 text-gray-500">
+                        <i class="fa-regular fa-folder-open text-4xl mb-3 text-gray-600"></i>
+                        <p>Conecte-se ao banco para visualizar as tabelas.</p>
+                    </div>
+                `;
+            }
+            
+            updateCounts();
             checkAuthStatus();
         } finally {
             hideLoading();

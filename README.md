@@ -12,16 +12,22 @@ O MetaDB MCP inicia **dois componentes no mesmo processo**:
 - **Servidor MCP (stdio)**: comunicação JSON-RPC via stdin/stdout para os editores/agentes de IA.
 - **Dashboard Web**: interface de gerenciamento acessível no navegador.
 
+Para facilitar a execução com as dependências corretas, utilize os scripts "plug and play" que criam o ambiente virtual automaticamente caso necessário.
+
 1. Abra um terminal no diretório raiz do projeto.
-2. Ative o seu ambiente virtual (se aplicável):
+2. Execute o script correspondente ao seu sistema:
+
+   **Linux/macOS:**
    ```bash
-   source venv/bin/activate
+   ./start_mcp.sh
    ```
-3. Execute o servidor:
-   ```bash
-   python3 main.py
+
+   **Windows:**
+   ```cmd
+   start_mcp.bat
    ```
-   *(O processo ficará aguardando mensagens JSON-RPC via stdin — isso é o comportamento esperado do transporte stdio)*
+
+*(O processo ficará aguardando mensagens JSON-RPC via stdin — isso é o comportamento esperado do transporte stdio)*
 
 **Argumentos de linha de comando disponíveis:**
 
@@ -33,7 +39,7 @@ O MetaDB MCP inicia **dois componentes no mesmo processo**:
 
 Exemplo com porta customizada:
 ```bash
-python3 main.py --port 9000
+./start_mcp.sh --port 9000
 ```
 
 ### 2. Sincronizar Tabelas (Painel de Controle)
@@ -51,7 +57,7 @@ Antes que a IA possa consultar os metadados, você precisa popular o cache local
 
 ## 🔌 Configuração do Editor / IDE
 
-O MetaDB MCP utiliza transporte **stdio** — o padrão mais amplamente suportado pelos clientes MCP. O editor inicia o processo `python3 main.py` e se comunica via stdin/stdout.
+O MetaDB MCP utiliza transporte **stdio** — o padrão mais amplamente suportado pelos clientes MCP. O editor inicia o processo `./start_mcp.sh` e se comunica via stdin/stdout.
 
 ### Cursor IDE
 
@@ -61,19 +67,22 @@ O MetaDB MCP utiliza transporte **stdio** — o padrão mais amplamente suportad
 4. Preencha os dados:
    - **Name**: `bridge-db-mcp` (ou `MetaDB-Control-Plane`)
    - **Type**: `command`
-   - **Command**: `python3 /caminho/absoluto/para/main.py`
+   - **Command**: `/caminho/absoluto/para/start_mcp.sh` (ou `.bat` no Windows)
 5. Salve e verifique se o status consta como "Connected".
+
+> **Dica Alternativa:** Se preferir não usar o script `start_mcp.sh`, você pode configurar o `command` para apontar diretamente para o interpretador do ambiente virtual do projeto:
+> `Command`: `/caminho/absoluto/para/venv/bin/python /caminho/absoluto/para/main.py`
 
 ### Kiro / Cline / Roo Code / Agentes Similares
 
 Para agentes que utilizam arquivos JSON de configuração:
-
+[text](.pytest_cache)
 ```json
 {
   "mcpServers": {
     "bridge-db-mcp": {
-      "command": "python3",
-      "args": ["/caminho/absoluto/para/main.py"],
+      "command": "/caminho/absoluto/para/start_mcp.sh",
+      "args": [],
       "cwd": "/caminho/absoluto/para/diretorio/do/projeto"
     }
   }
@@ -81,6 +90,7 @@ Para agentes que utilizam arquivos JSON de configuração:
 ```
 
 > **Nota:** O `cwd` é importante para que o servidor encontre os diretórios `web/` e o banco `mcp_cache.db`.
+> Se desejar usar o comando manual em vez do script, passe o caminho absoluto do python do venv no `"command"`: `"/caminho/absoluto/para/venv/bin/python"` e o `main.py` em `"args"`.
 
 ### Gemini CLI
 
@@ -88,8 +98,8 @@ Para agentes que utilizam arquivos JSON de configuração:
 {
   "mcpServers": {
     "bridge-db-mcp": {
-      "command": "python3",
-      "args": ["/caminho/absoluto/para/main.py"]
+      "command": "/caminho/absoluto/para/start_mcp.sh",
+      "args": []
     }
   }
 }
