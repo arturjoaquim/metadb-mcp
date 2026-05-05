@@ -16,9 +16,9 @@ import jwt
 import keyring
 from argon2.low_level import Type, hash_secret_raw
 
-from .database import secure_connection
-from .database.models import AppConfig
-from .database.secure_connection import DB_FILE_PATH, SecureConnectionError
+from infrastructure.database import secure_connection
+from infrastructure.database.models import AppConfig
+from infrastructure.database.secure_connection import DB_FILE_PATH, SecureConnectionError
 
 logger: logging.Logger = logging.getLogger(__name__)
 

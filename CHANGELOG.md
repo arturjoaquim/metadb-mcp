@@ -3,6 +3,26 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [4.0.1] - 2026-05-04
+### Fixed
+- Erro `RuntimeError: Directory 'interfaces/web/static' does not exist` resolvido utilizando caminhos absolutos baseados na localização do arquivo atual (`pathlib.Path(__file__)`) para os diretórios `static` e `templates`, evitando problemas ao rodar o script fora da raiz do projeto.
+
+## [4.0.0] - 2026-05-04
+### Added
+- Criação de nova estrutura de projeto modular baseada em separação de responsabilidades (Clean Architecture style).
+- Todos os pacotes (`application`, `infrastructure`, `interfaces`, `shared`) e o `main.py` encapsulados na pasta `src/`.
+- Criação do pacote `infrastructure` contendo as regras de `database` e `security`.
+- Criação da camada `interfaces` armazenando DTOs (`requests.py`), Web (`web/`) e os Controladores FastAPI e MCP (`web_controller.py` e `mcp_controller.py`).
+- Criação do módulo `shared` com o pacote de utilitários de rede `network.py`.
+- Criação do pacote `application` visando hospedar a orquestração do sistema. Adição do `MetadataService` (`metadata_service.py`) que abstrai a lógica de chamadas ao banco antes pertencentes aos controllers.
+- Inclusão da diretriz de IA `.agents/skills/architecture.md` (promovida de rule para skill).
+
+### Changed
+- Organização do diretório de testes (`tests/`) para espelhar a árvore de pacotes do `src/` (ex: `tests/infrastructure/security/`).
+- Refatoração do `mcp_controller.py` para não realizar acesso direto ao banco, aderindo de fato à nova arquitetura ao injetar/delegar solicitações de dados ao `MetadataService`.
+- Refatoração do `main.py` para atuar puramente como bootstrap da aplicação, inicializando middlewares, instanciando rotas de controlers e iniciando servidores em threads separadas.
+- Remoção do diretório centralizado `core/` em favor da estrutura modular em `src/`.
+
 ## [3.2.0] - 2026-05-04
 ### Added
 - Seleção dinâmica de porta (`find_free_port`) para o servidor web no `main.py`, permitindo múltiplas execuções simultâneas do MCP sem conflito.

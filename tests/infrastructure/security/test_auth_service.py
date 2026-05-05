@@ -4,20 +4,20 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 # Ajusta o DB_FILE_PATH para os testes para não sobrescrever o real
-import core.database.secure_connection as secure_connection_module
+import infrastructure.database.secure_connection as secure_connection_module
 secure_connection_module.DB_FILE_PATH = Path("test_mcp_cache.db")
 
-from core.auth_service import AuthService, AuthenticationError
-from core.database import secure_connection
-from core.database.secure_connection import SecureConnectionError
+from infrastructure.security.auth_service import AuthService, AuthenticationError
+from infrastructure.database import secure_connection
+from infrastructure.database.secure_connection import SecureConnectionError
 
 
 @pytest.fixture(autouse=True)
 def cleanup():
     test_db = Path("test_mcp_cache.db")
     
-    with patch("core.auth_service.DB_FILE_PATH", test_db), \
-         patch("core.database.secure_connection.DB_FILE_PATH", test_db):
+    with patch("infrastructure.security.auth_service.DB_FILE_PATH", test_db), \
+         patch("infrastructure.database.secure_connection.DB_FILE_PATH", test_db):
         # Antes de cada teste
         if test_db.exists():
             os.remove(test_db)
@@ -47,9 +47,9 @@ def test_auth_flow_success():
         if username in mock_storage:
             del mock_storage[username]
     
-    with patch("core.auth_service.keyring.set_password", side_effect=mock_set_password), \
-         patch("core.auth_service.keyring.get_password", side_effect=mock_get_password), \
-         patch("core.auth_service.keyring.delete_password", side_effect=mock_delete_password):
+    with patch("infrastructure.security.auth_service.keyring.set_password", side_effect=mock_set_password), \
+         patch("infrastructure.security.auth_service.keyring.get_password", side_effect=mock_get_password), \
+         patch("infrastructure.security.auth_service.keyring.delete_password", side_effect=mock_delete_password):
         
         # 1. Register
         token1 = auth.register("testuser", "senha123")
@@ -82,8 +82,8 @@ def test_auth_flow_wrong_password():
     def mock_get_password(service, username):
         return mock_storage.get(username)
     
-    with patch("core.auth_service.keyring.set_password", side_effect=mock_set_password), \
-         patch("core.auth_service.keyring.get_password", side_effect=mock_get_password):
+    with patch("infrastructure.security.auth_service.keyring.set_password", side_effect=mock_set_password), \
+         patch("infrastructure.security.auth_service.keyring.get_password", side_effect=mock_get_password):
         
         # Register
         auth.register("testuser", "senha123")
