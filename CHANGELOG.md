@@ -3,6 +3,23 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [5.1.1] - 2026-05-06
+### Fixed
+- Problemas de encoding ao salvar metadados e amostras no cache local, garantindo o uso de UTF-8 real e desativando sequências de escape JSON desnecessárias via `ensure_ascii=False`.
+- Melhoria na serialização de amostras de dados para tratar corretamente objetos `bytes` e preservar valores `null` (None) em vez de convertê-los para strings.
+
+### Changed
+- Configuração explícita de UTF-8 no evento de conexão do SQLCipher (`PRAGMA encoding`) e na string de conexão do PostgreSQL (`client_encoding=utf8`).
+
+## [5.1.0] - 2026-05-06
+### Added
+- Padronização de metadados para minúsculo no cache local, incluindo nomes de tabelas, esquemas, colunas, índices, constraints e **comentários**.
+- Testes unitários para validar a integridade da padronização de caixa (lowercase) nos serviços de sincronização e metadados.
+
+### Changed
+- Refatoração do `SyncService` para persistir todos os identificadores e comentários sempre em minúsculo.
+- Atualização do `MetadataService` para converter termos de busca (tabelas e esquemas) para minúsculo antes de consultar o banco de dados.
+
 ## [5.0.2] - 2026-05-06
 ### Fixed
 - Correção dos scripts `start_mcp.sh` e `start_mcp.bat` para apontarem para o novo local do ponto de entrada (`src/main.py`), resolvendo o erro de arquivo não encontrado na inicialização.

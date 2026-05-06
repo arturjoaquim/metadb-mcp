@@ -82,6 +82,10 @@ class MetadataService:
 
     def get_table_columns(self, table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None) -> str:
         """Retorna as colunas de uma tabela formatadas."""
+        table_name = table_name.lower()
+        if schema:
+            schema = schema.lower()
+            
         session = self._secure_conn.get_session()
         try:
             tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
@@ -100,6 +104,10 @@ class MetadataService:
 
     def get_table_indexes(self, table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None) -> str:
         """Retorna os índices de uma tabela formatados."""
+        table_name = table_name.lower()
+        if schema:
+            schema = schema.lower()
+            
         session = self._secure_conn.get_session()
         try:
             tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
@@ -121,6 +129,10 @@ class MetadataService:
 
     def get_table_constraints(self, table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None) -> str:
         """Retorna as constraints de uma tabela formatadas."""
+        table_name = table_name.lower()
+        if schema:
+            schema = schema.lower()
+            
         session = self._secure_conn.get_session()
         try:
             tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
@@ -148,6 +160,10 @@ class MetadataService:
 
     def get_domain_context(self, table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None) -> str:
         """Retorna amostras de dados de uma tabela formatadas."""
+        table_name = table_name.lower()
+        if schema:
+            schema = schema.lower()
+            
         session = self._secure_conn.get_session()
         try:
             tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
@@ -168,6 +184,7 @@ class MetadataService:
 
     def search_metadata(self, query: str) -> str:
         """Realiza busca textual por termos específicos nos nomes de tabelas e colunas."""
+        query = query.lower()
         session = self._secure_conn.get_session()
         try:
             result = []

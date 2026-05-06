@@ -9,6 +9,9 @@ Ao desenvolver ou refatorar qualquer código neste projeto, você deve SEMPRE ad
 
 ## 1. Testes Automatizados Obrigatórios
 - Para cada nova funcionalidade, alteração de comportamento ou correção de bug, você DEVE criar ou atualizar os testes automatizados correspondentes (testes unitários e/ou de integração).
+- Os testes devem ser SEMPRE criados dentro da pasta `tests/` na raiz do projeto.
+- **Testes Unitários**: Devem espelhar a estrutura da pasta `src/` (ex: `tests/application/services/`).
+- **Testes de Integração**: Devem ser colocados em uma pasta específica chamada `tests/integration/`.
 - O código só é considerado concluído quando estiver coberto por testes que validem seu comportamento.
 
 ## 2. Princípios SOLID

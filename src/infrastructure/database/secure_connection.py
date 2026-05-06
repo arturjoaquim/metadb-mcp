@@ -102,6 +102,7 @@ class SecureConnectionManager:
             ) -> None:
                 cursor: sqlcipher3.Cursor = dbapi_connection.cursor()
                 cursor.execute(f"PRAGMA key = \"{raw_key_pragma}\"")
+                cursor.execute("PRAGMA encoding = 'UTF-8'")
                 cursor.close()
 
             # Validar a chave tentando acessar o banco

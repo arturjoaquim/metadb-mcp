@@ -2,8 +2,8 @@ __pycache__/
 .venv/
 venv/
 .env
-mcp_cache.db
-metadb_mcp.log
 *.db-journal
 *.db-wal
 .pytest_cache/
+*.db
+**/*.log

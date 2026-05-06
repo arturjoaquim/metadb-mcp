@@ -8,7 +8,7 @@ class PostgresMetadataExtractor(BaseMetadataExtractor):
     def build_connection_string(self) -> str:
         encoded_password = urllib.parse.quote_plus(self.password)
         encoded_user = urllib.parse.quote_plus(self.user)
-        return f"postgresql+psycopg2://{encoded_user}:{encoded_password}@{self.host}:{self.port}/{self.dbname}"
+        return f"postgresql+psycopg2://{encoded_user}:{encoded_password}@{self.host}:{self.port}/{self.dbname}?client_encoding=utf8"
 
     def get_default_schema(self, inspector: Any) -> str:
         return inspector.default_schema_name

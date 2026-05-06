@@ -82,16 +82,22 @@ class SyncService:
 
             for table_item in tables_to_sync:
                 if "." in table_item:
-                    schema, table_name = table_item.split(".", 1)
+                    orig_schema, orig_table_name = table_item.split(".", 1)
                 else:
-                    schema = default_schema
-                    table_name = table_item
+                    orig_schema = default_schema
+                    orig_table_name = table_item
+
+                # Usar nomes em minúsculo para o cache local
+                schema = orig_schema.lower() if orig_schema else None
+                table_name = orig_table_name.lower()
 
                 existing_table = sync_dao.get_existing_table(conn_id, table_name, schema)
                 if existing_table:
                     sync_dao.delete_table_metadata(existing_table)
 
-                table_comment = adapter.get_table_comment(inspector, table_name, schema)
+                table_comment = adapter.get_table_comment(inspector, orig_table_name, orig_schema)
+                if table_comment:
+                    table_comment = table_comment.lower()
 
                 sync_table = SyncTable(
                     connection_id=conn_id,
@@ -103,52 +109,52 @@ class SyncService:
                 session.flush()
 
                 # Colunas
-                columns = inspector.get_columns(table_name, schema=schema)
+                columns = inspector.get_columns(orig_table_name, schema=orig_schema)
                 for col in columns:
                     data_type_str = str(col["type"])
                     sync_col = SyncColumn(
                         table_id=sync_table.id,
-                        column_name=col["name"],
+                        column_name=str(col["name"]).lower(),
                         data_type=data_type_str,
                         is_nullable=1 if col.get("nullable", True) else 0,
                         default_value=str(col.get("default", ""))
                         if col.get("default")
                         else None,
-                        comment=col.get("comment"),
+                        comment=col.get("comment").lower() if col.get("comment") else None,
                     )
                     session.add(sync_col)
 
                 # Índices
-                indexes = inspector.get_indexes(table_name, schema=schema)
+                indexes = inspector.get_indexes(orig_table_name, schema=orig_schema)
                 for idx in indexes:
                     sync_idx = SyncIndex(
                         table_id=sync_table.id,
-                        index_name=idx["name"],
-                        columns=json.dumps(idx.get("column_names", [])),
+                        index_name=str(idx["name"]).lower(),
+                        columns=json.dumps([c.lower() for c in idx.get("column_names", [])], ensure_ascii=False),
                         is_unique=1 if idx.get("unique", False) else 0,
                     )
                     session.add(sync_idx)
 
                 # Constraints (PK, FK)
-                pk = inspector.get_pk_constraint(table_name, schema=schema)
+                pk = inspector.get_pk_constraint(orig_table_name, schema=orig_schema)
                 if pk and pk.get("constrained_columns"):
                     sync_pk = SyncConstraint(
                         table_id=sync_table.id,
-                        constraint_name=pk.get("name", "PK"),
+                        constraint_name=str(pk.get("name", "PK")).lower(),
                         constraint_type="PRIMARY KEY",
-                        columns=json.dumps(pk.get("constrained_columns", [])),
+                        columns=json.dumps([c.lower() for c in pk.get("constrained_columns", [])], ensure_ascii=False),
                     )
                     session.add(sync_pk)
 
-                fks = inspector.get_foreign_keys(table_name, schema=schema)
+                fks = inspector.get_foreign_keys(orig_table_name, schema=orig_schema)
                 for fk in fks:
                     sync_fk = SyncConstraint(
                         table_id=sync_table.id,
-                        constraint_name=fk.get("name", "FK"),
+                        constraint_name=str(fk.get("name", "FK")).lower(),
                         constraint_type="FOREIGN KEY",
-                        columns=json.dumps(fk.get("constrained_columns", [])),
-                        ref_table=fk.get("referred_table"),
-                        ref_columns=json.dumps(fk.get("referred_columns", [])),
+                        columns=json.dumps([c.lower() for c in fk.get("constrained_columns", [])], ensure_ascii=False),
+                        ref_table=str(fk.get("referred_table")).lower() if fk.get("referred_table") else None,
+                        ref_columns=json.dumps([c.lower() for c in fk.get("referred_columns", [])], ensure_ascii=False),
                     )
                     session.add(sync_fk)
 
@@ -156,22 +162,23 @@ class SyncService:
                 with engine.connect() as db_conn:
                     # usar text() para sqlalchemy 2.0+
                     stmt = text(
-                        f"SELECT * FROM {schema}.{table_name}"
-                        if schema
-                        else f"SELECT * FROM {table_name}"
+                        f"SELECT * FROM {orig_schema}.{orig_table_name}"
+                        if orig_schema
+                        else f"SELECT * FROM {orig_table_name}"
                     )
                     result = db_conn.execute(stmt)
                     rows = result.fetchmany(10)
                     keys = result.keys()
 
                     for row in rows:
-                        row_dict = dict(zip(keys, row))
-                        for k, v in row_dict.items():
-                            row_dict[k] = str(v)
+                        row_dict = {
+                            str(k).lower(): (v.decode("utf-8", errors="replace") if isinstance(v, bytes) else v)
+                            for k, v in zip(keys, row)
+                        }
 
                         sync_sample = SyncSample(
                             table_id=sync_table.id,
-                            row_data=json.dumps(row_dict),
+                            row_data=json.dumps(row_dict, ensure_ascii=False, default=str),
                         )
                         session.add(sync_sample)
 
