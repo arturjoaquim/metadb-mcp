@@ -3,6 +3,38 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [5.0.2] - 2026-05-06
+### Fixed
+- Correção dos scripts `start_mcp.sh` e `start_mcp.bat` para apontarem para o novo local do ponto de entrada (`src/main.py`), resolvendo o erro de arquivo não encontrado na inicialização.
+
+## [5.0.1] - 2026-05-06
+### Fixed
+- Remoção de blocos `try...except` aninhados no `SyncService` que mascaravam falhas durante a extração de índices, constraints e amostras, garantindo a integridade da transação via rollback em caso de erro.
+
+## [5.0.0] - 2026-05-06
+### Added
+- Módulo `providers.py` atuando como Composition Root para centralizar a injeção de dependências do projeto.
+- Implementação de Injeção de Dependência por Construtor em todos os serviços (`application/services/`) e controladores.
+
+### Changed
+- Renomeação dos adaptadores de banco de dados para Extratores de Metadados (`BaseMetadataExtractor`, `PostgresMetadataExtractor`, `OracleMetadataExtractor`) para alinhar o nome à responsabilidade de extração de metadados.
+- Refatoração completa dos serviços `SyncService`, `DashboardService`, `MetadataService` e `AuthService` para eliminar dependências globais e permitir testes com mocks.
+- Atualização do `main.py` para utilizar o novo fluxo de inicialização baseado em provedores.
+
+### Removed
+- Arquivo `src/infrastructure/database/manager.py`, cujas responsabilidades foram distribuídas entre os novos serviços e DAOs.
+
+## [4.2.0] - 2026-05-05
+### Added
+- Criação da diretriz de IA `.agents/skills/software-quality/SKILL.md` que instrui a criação obrigatória de testes automatizados e o rigoroso seguimento dos princípios SOLID e Inversão de Dependência (Dependency Inversion) durante o desenvolvimento.
+
+### Changed
+- Estrutura das skills (`architecture` e `software-quality`) atualizada para o formato oficial de diretórios contendo arquivos `SKILL.md` com YAML frontmatter.
+
+## [4.1.0] - 2026-05-04
+### Changed
+- Separação das lógicas de acesso a dados contidas em `src/infrastructure/database/manager.py` para DAOs específicos em `src/infrastructure/database/daos/` (`ConnectionDAO` e `SyncDAO`), diminuindo o acoplamento e o tamanho do gerenciador.
+
 ## [4.0.1] - 2026-05-04
 ### Fixed
 - Erro `RuntimeError: Directory 'interfaces/web/static' does not exist` resolvido utilizando caminhos absolutos baseados na localização do arquivo atual (`pathlib.Path(__file__)`) para os diretórios `static` e `templates`, evitando problemas ao rodar o script fora da raiz do projeto.

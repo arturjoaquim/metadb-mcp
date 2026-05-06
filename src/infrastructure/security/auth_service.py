@@ -16,9 +16,8 @@ import jwt
 import keyring
 from argon2.low_level import Type, hash_secret_raw
 
-from infrastructure.database import secure_connection
 from infrastructure.database.models import AppConfig
-from infrastructure.database.secure_connection import DB_FILE_PATH, SecureConnectionError
+from infrastructure.database.secure_connection import DB_FILE_PATH, SecureConnectionManager, SecureConnectionError
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -61,6 +60,9 @@ class AuthService:
     ARGON2_PARALLELISM: int = 4
     ARGON2_HASH_LEN: int = 32  # 256 bits
 
+    def __init__(self, secure_conn: SecureConnectionManager) -> None:
+        self._secure_conn = secure_conn
+
     def register(self, username: str, password: str) -> str:
         """Cadastro inicial — cria banco criptografado e retorna JWT.
 
@@ -95,7 +97,7 @@ class AuthService:
 
         # 3. Desbloquear (cria o banco criptografado)
         try:
-            secure_connection.unlock(derived_key_hex)
+            self._secure_conn.unlock(derived_key_hex)
         except SecureConnectionError:
             # Limpar salt do keyring em caso de falha
             keyring.delete_password(self.KEYRING_SERVICE, username)
@@ -105,7 +107,7 @@ class AuthService:
 
         # 4. Armazenar JWT secret dentro do banco criptografado
         jwt_secret: str = secrets.token_hex(32)
-        session = secure_connection.get_session()
+        session = self._secure_conn.get_session()
         try:
             config_entry: AppConfig = AppConfig(
                 key="jwt_secret_key",
@@ -173,7 +175,7 @@ class AuthService:
 
         # 3. Tentar desbloquear — o banco É o verificador
         try:
-            secure_connection.unlock(derived_key_hex)
+            self._secure_conn.unlock(derived_key_hex)
         except SecureConnectionError as exc:
             raise AuthenticationError(
                 "Credenciais inválidas. Senha incorreta."
@@ -217,7 +219,7 @@ class AuthService:
         Returns:
             Payload decodificado se válido, ``None`` caso contrário.
         """
-        if not secure_connection.is_unlocked:
+        if not self._secure_conn.is_unlocked:
             return None
 
         try:
@@ -270,7 +272,7 @@ class AuthService:
         Raises:
             AuthenticationError: Se o secret não for encontrado no banco.
         """
-        session = secure_connection.get_session()
+        session = self._secure_conn.get_session()
         try:
             config: Optional[AppConfig] = (
                 session.query(AppConfig)
@@ -286,5 +288,3 @@ class AuthService:
             session.close()
 
 
-# Instância global do serviço de autenticação
-auth_service: AuthService = AuthService()

@@ -3,7 +3,7 @@ from typing import List, Any, Optional
 from sqlalchemy import create_engine
 
 
-class BaseDBAdapter(ABC):
+class BaseMetadataExtractor(ABC):
     def __init__(self, host: str, port: int, user: str, password: str, dbname: str):
         self.host = host
         self.port = port
@@ -23,7 +23,7 @@ class BaseDBAdapter(ABC):
     def test_connection(self) -> bool:
         engine = self.get_engine()
         try:
-            with engine.connect() as conn:
+            with engine.connect():
                 return True
         except Exception as e:
             print(f"Erro ao conectar: {e}")

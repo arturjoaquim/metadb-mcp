@@ -4,8 +4,10 @@ Este módulo encapsula as operações de banco de dados relacionadas aos metadad
 sincronizados, fornecendo uma interface para a camada de controladores (MCP).
 """
 
-from typing import Any, List, Optional, Tuple
-from infrastructure import database
+from typing import Any, List, Optional, Tuple, Type
+from infrastructure.database.secure_connection import SecureConnectionManager
+from infrastructure.database.daos.sync_dao import SyncDAO
+from infrastructure.database.daos.connection_dao import ConnectionDAO
 from infrastructure.database.models import (
     SyncTable,
     SyncColumn,
@@ -26,9 +28,19 @@ class MetadataService:
     Abstrai o acesso aos modelos SQLAlchemy do cache local.
     """
 
+    def __init__(
+        self,
+        secure_conn: SecureConnectionManager,
+        sync_dao_class: Type[SyncDAO] = SyncDAO,
+        connection_dao_class: Type[ConnectionDAO] = ConnectionDAO,
+    ) -> None:
+        self._secure_conn = secure_conn
+        self._sync_dao_class = sync_dao_class
+        self._connection_dao_class = connection_dao_class
+
     def is_database_unlocked(self) -> bool:
         """Verifica se o banco de dados está inicializado e desbloqueado."""
-        return bool(database.secure_connection.is_unlocked and database.db_manager is not None)
+        return bool(self._secure_conn.is_unlocked)
 
     def _validate_tables(
         self, session: Any, tables: List[SyncTable], table_name: str
@@ -40,8 +52,9 @@ class MetadataService:
             )
         if len(tables) > 1:
             options = []
+            conn_dao = self._connection_dao_class(session)
             for t in tables:
-                conn = database.db_manager.get_dbconnection_by_id(session, t.connection_id) # type: ignore
+                conn = conn_dao.get_by_id(int(str(t.connection_id)))
                 dbname = conn.dbname if conn else "Desconhecido"
                 options.append(f"schema: '{t.schema_name}', dbname: '{dbname}'")
             return (
@@ -56,7 +69,7 @@ class MetadataService:
         if not self.is_database_unlocked():
             raise MetadataServiceError("Banco bloqueado.")
             
-        session = database.db_manager.get_session() # type: ignore
+        session = self._secure_conn.get_session()
         try:
             tables = session.query(SyncTable).all()
             if not tables:
@@ -69,12 +82,12 @@ class MetadataService:
 
     def get_table_columns(self, table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None) -> str:
         """Retorna as colunas de uma tabela formatadas."""
-        session = database.db_manager.get_session() # type: ignore
+        session = self._secure_conn.get_session()
         try:
-            tables = database.db_manager.get_tables(session, table_name, schema, dbname) # type: ignore
+            tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
-            if error_msg:
-                return error_msg
+            if error_msg or not table:
+                return str(error_msg)
 
             columns = session.query(SyncColumn).filter_by(table_id=table.id).all()
             result = [f"Colunas de {table_name}:"]
@@ -87,12 +100,12 @@ class MetadataService:
 
     def get_table_indexes(self, table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None) -> str:
         """Retorna os índices de uma tabela formatados."""
-        session = database.db_manager.get_session() # type: ignore
+        session = self._secure_conn.get_session()
         try:
-            tables = database.db_manager.get_tables(session, table_name, schema, dbname) # type: ignore
+            tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
-            if error_msg:
-                return error_msg
+            if error_msg or not table:
+                return str(error_msg)
 
             indexes = session.query(SyncIndex).filter_by(table_id=table.id).all()
             if not indexes:
@@ -108,12 +121,12 @@ class MetadataService:
 
     def get_table_constraints(self, table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None) -> str:
         """Retorna as constraints de uma tabela formatadas."""
-        session = database.db_manager.get_session() # type: ignore
+        session = self._secure_conn.get_session()
         try:
-            tables = database.db_manager.get_tables(session, table_name, schema, dbname) # type: ignore
+            tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
-            if error_msg:
-                return error_msg
+            if error_msg or not table:
+                return str(error_msg)
 
             constraints = session.query(SyncConstraint).filter_by(table_id=table.id).all()
             if not constraints:
@@ -135,12 +148,12 @@ class MetadataService:
 
     def get_domain_context(self, table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None) -> str:
         """Retorna amostras de dados de uma tabela formatadas."""
-        session = database.db_manager.get_session() # type: ignore
+        session = self._secure_conn.get_session()
         try:
-            tables = database.db_manager.get_tables(session, table_name, schema, dbname) # type: ignore
+            tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
-            if error_msg:
-                return error_msg
+            if error_msg or not table:
+                return str(error_msg)
 
             samples = session.query(SyncSample).filter_by(table_id=table.id).all()
             if not samples:
@@ -148,14 +161,14 @@ class MetadataService:
 
             result = [f"Amostras de dados para {table_name}:"]
             for s in samples:
-                result.append(s.row_data)
+                result.append(s.row_data) # type: ignore
             return "\n".join(result)
         finally:
             session.close()
 
     def search_metadata(self, query: str) -> str:
         """Realiza busca textual por termos específicos nos nomes de tabelas e colunas."""
-        session = database.db_manager.get_session() # type: ignore
+        session = self._secure_conn.get_session()
         try:
             result = []
             search_term = f"%{query}%"
@@ -190,4 +203,4 @@ class MetadataService:
         finally:
             session.close()
 
-metadata_service = MetadataService()
+

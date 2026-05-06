@@ -23,4 +23,4 @@ if not exist "venv\" (
 )
 
 REM Executa o servidor usando o interpretador do ambiente virtual
-venv\Scripts\python main.py %*
+venv\Scripts\python src/main.py %*

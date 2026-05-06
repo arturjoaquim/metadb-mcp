@@ -30,4 +30,4 @@ fi
 
 # Executa o servidor usando o interpretador do ambiente virtual
 # O uso do 'exec' substitui o processo atual pelo python, garantindo que os sinais (SIGINT, etc) sejam repassados corretamente
-exec ./venv/bin/python main.py "$@"
+exec ./venv/bin/python src/main.py "$@"

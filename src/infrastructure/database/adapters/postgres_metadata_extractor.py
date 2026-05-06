@@ -1,10 +1,10 @@
 import urllib.parse
 from typing import List, Any
 from sqlalchemy import inspect
-from .base_adapter import BaseDBAdapter
+from .base_metadata_extractor import BaseMetadataExtractor
 
 
-class PostgresAdapter(BaseDBAdapter):
+class PostgresMetadataExtractor(BaseMetadataExtractor):
     def build_connection_string(self) -> str:
         encoded_password = urllib.parse.quote_plus(self.password)
         encoded_user = urllib.parse.quote_plus(self.user)

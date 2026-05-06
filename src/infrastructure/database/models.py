@@ -14,7 +14,6 @@ class DBConnection(Base):
     port = Column(Integer)
     user = Column(String(255))
     dbname = Column(String(255))  # dbname or sid/service_name
-    # SENHAS NÃO SÃO ARMAZENADAS A PEDIDO DO USUÁRIO
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -74,4 +73,3 @@ class AppConfig(Base):
     key = Column(String(255), unique=True, nullable=False)
     value = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-

@@ -25,8 +25,10 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from shared.utils import network
-from interfaces.controllers.web_controller import web_router
-from interfaces.controllers.mcp_controller import mcp
+from application import providers
+from interfaces.controllers.web_controller import init_web_controller
+from interfaces.controllers.mcp_controller import init_mcp_controller
+from mcp.server.fastmcp import FastMCP
 from mcp.server.stdio import stdio_server
 
 # ---------------------------------------------------------------------------
@@ -39,7 +41,13 @@ BASE_DIR = pathlib.Path(__file__).parent.resolve()
 STATIC_DIR = BASE_DIR / "interfaces" / "web" / "static"
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+# Inicializa e inclui o router web com injeção
+web_router = init_web_controller(providers.dashboard_service)
 app.include_router(web_router)
+
+# Inicializa o servidor MCP com injeção
+mcp_server = init_mcp_controller(providers.metadata_service)
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +78,7 @@ def _run_web_server(host: str, port: int) -> None:
 
 
 async def _run_stdio_mcp(
+    mcp: FastMCP,
     original_stdin: TextIO,
     original_stdout: TextIO,
 ) -> None:
@@ -177,7 +186,7 @@ def main() -> None:
 
     # 5. Executar o servidor MCP stdio na thread principal (bloqueante)
     try:
-        asyncio.run(_run_stdio_mcp(original_stdin, original_stdout))
+        asyncio.run(_run_stdio_mcp(mcp_server, original_stdin, original_stdout))
     except KeyboardInterrupt:
         pass
     finally:

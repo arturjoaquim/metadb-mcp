@@ -1,7 +1,7 @@
 import os
 import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Ajusta o DB_FILE_PATH para os testes para não sobrescrever o real
 import infrastructure.database.secure_connection as secure_connection_module
@@ -9,7 +9,6 @@ secure_connection_module.DB_FILE_PATH = Path("test_mcp_cache.db")
 
 from infrastructure.security.auth_service import AuthService, AuthenticationError
 from infrastructure.database import secure_connection
-from infrastructure.database.secure_connection import SecureConnectionError
 
 
 @pytest.fixture(autouse=True)
@@ -32,7 +31,7 @@ def cleanup():
 
 
 def test_auth_flow_success():
-    auth = AuthService()
+    auth = AuthService(secure_connection)
     
     # Mock do keyring para não sujar o SO
     mock_storage = {}
@@ -73,7 +72,7 @@ def test_auth_flow_success():
 
 
 def test_auth_flow_wrong_password():
-    auth = AuthService()
+    auth = AuthService(secure_connection)
     mock_storage = {}
     
     def mock_set_password(service, username, password):
