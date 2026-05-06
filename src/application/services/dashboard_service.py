@@ -75,8 +75,8 @@ class DashboardService:
 
     def get_tables(
         self, db_type: str, host: str, port: int, user: str, password: str, dbname: str, conn_name: str
-    ) -> Dict[str, List[str]]:
-        """Testa conexão e retorna tabelas remotas e sincronizadas."""
+    ) -> Dict[str, Any]:
+        """Testa conexão e retorna tabelas remotas e informações de sincronização."""
         if not self.is_unlocked():
             raise DashboardServiceError("Banco de dados bloqueado.")
 
@@ -94,7 +94,17 @@ class DashboardService:
         return {"tables": tables, "synced_tables": synced_tables}
 
     def sync_tables(
-        self, conn_name: str, tables_to_sync: List[str], db_type: str, host: str, port: int, user: str, password: str, dbname: str
+        self,
+        conn_name: str,
+        tables_to_sync: List[str],
+        db_type: str,
+        host: str,
+        port: int,
+        user: str,
+        password: str,
+        dbname: str,
+        sensitive_tables: Optional[List[str]] = None,
+        sample_size: int = 10,
     ) -> None:
         """Sincroniza tabelas do banco remoto para o cache local."""
         if not self.is_unlocked():
@@ -109,6 +119,8 @@ class DashboardService:
             user=user,
             password=password,
             dbname=dbname,
+            sensitive_tables=sensitive_tables,
+            sample_size=sample_size,
         )
 
 

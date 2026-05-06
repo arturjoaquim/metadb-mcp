@@ -3,6 +3,22 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [7.0.0] - 2026-05-06
+### Added
+- Funcionalidade de **Tabelas Sensíveis**: usuários podem marcar tabelas para que amostras de dados não sejam coletadas durante a sincronização.
+- Controle de **Tamanho da Amostra**: campo configurável no dashboard para definir a quantidade de linhas coletadas por tabela.
+- Novos campos `is_sensitive` e `sample_size` no modelo `MetadataTable` para persistência das configurações por tabela.
+- Exibição de sensibilidade e tamanho da amostra nas ferramentas MCP `list_sync_tables` e `get_table_description`.
+
+### Changed
+- [BREAKING CHANGE] Alteração no esquema do banco de dados local (`metadata_tables`). Bancos existentes precisam ser recriados.
+- Atualização do `SyncService` e `DashboardService` para suportar os novos parâmetros de sincronização.
+- Refatoração da ferramenta `get_domain_context` para proteger tabelas sensíveis.
+
+### Fixed
+- Proteção automática contra tabelas com menos registros que o tamanho de amostra solicitado (via `fetchmany`).
+- Correção: tabelas marcadas como sensíveis agora mantêm o estado visual ao reconectar ao banco remoto, restaurando `is_sensitive` e `sample_size` do cache local.
+
 ## [6.1.0] - 2026-05-06
 ### Added
 - Novas dataclasses em `extracted_metadata.py` para representar metadados extraídos de forma agnóstica ao ORM.

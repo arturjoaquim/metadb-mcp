@@ -71,7 +71,10 @@ class MetadataService:
             if not tables:
                 return "Nenhuma tabela sincronizada no momento."
 
-            result = [f"- {t.schema_name}.{t.table_name}" for t in tables]
+            result = []
+            for t in tables:
+                sensitive_tag = " [🔒 SENSÍVEL]" if t.is_sensitive else ""
+                result.append(f"- {t.schema_name}.{t.table_name}{sensitive_tag}")
             return "Tabelas sincronizadas:\n" + "\n".join(result)
         finally:
             session.close()
@@ -171,11 +174,17 @@ class MetadataService:
             if error_msg or not table:
                 return str(error_msg)
 
+            if table.is_sensitive:
+                return (
+                    f"⚠️ A tabela '{table_name}' está marcada como sensível. "
+                    "Amostras de dados não foram coletadas para proteger dados sigilosos."
+                )
+
             samples = metadata_dao.get_samples_by_table_id(int(str(table.id)))
             if not samples:
                 return f"Nenhuma amostra de dados encontrada para '{table_name}'."
 
-            result = [f"Amostras de dados para {table_name}:"]
+            result = [f"Amostras de dados para {table_name} (tamanho: {table.sample_size}):"]
             for s in samples:
                 result.append(s.row_data) # type: ignore
             return "\n".join(result)
@@ -196,7 +205,13 @@ class MetadataService:
                 return str(error_msg)
 
             comment = table.comment if table.comment else "Sem comentário disponível."
-            return f"Descrição da tabela {table.schema_name}.{table.table_name}: {comment}"
+            sensitive_info = "SIM" if table.is_sensitive else "NÃO"
+            return (
+                f"Descrição da tabela {table.schema_name}.{table.table_name}:\n"
+                f"- Comentário: {comment}\n"
+                f"- Sensível: {sensitive_info}\n"
+                f"- Amostra coletada: {table.sample_size} linhas"
+            )
         finally:
             session.close()
 

@@ -141,6 +141,8 @@ def init_web_controller(dashboard_service: DashboardService) -> APIRouter:
                 user=req.user,
                 password=req.password,
                 dbname=req.dbname,
+                sensitive_tables=req.sensitive_tables,
+                sample_size=req.sample_size,
             )
             return {
                 "status": "success",

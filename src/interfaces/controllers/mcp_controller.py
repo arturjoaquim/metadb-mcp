@@ -90,14 +90,15 @@ def init_mcp_controller(metadata_service: MetadataService) -> FastMCP:
     async def get_domain_context(
         table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None
     ) -> str:
-        """Fornece uma visão prática dos dados reais (amostra de 10 linhas) para entender o domínio de negócio.
+        """Fornece uma visão prática dos dados reais (amostra de dados) para entender o domínio de negócio.
+        IMPORTANTE: Se a tabela for marcada como 'SENSÍVEL' durante a sincronização, esta ferramenta retornará um aviso e nenhuma amostra será exibida por questões de segurança.
         Use esta ferramenta quando o nome da coluna for ambíguo ou para entender padrões de valores (ex: formatos de data, enums, prefixos).
         Argumentos:
             table_name (str): Nome exato da tabela. Obrigatório.
             schema (Optional[str]): Nome do schema. Opcional, mas recomendado.
             dbname (Optional[str]): Nome do banco de dados. Opcional, mas recomendado.
         Retorno:
-            Dados da amostra em formato JSON ou string, representando as linhas originais."""
+            Dados da amostra em formato JSON/string ou mensagem de proteção para tabelas sensíveis."""
         error = _require_unlocked()
         if error:
             return error

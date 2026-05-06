@@ -34,3 +34,5 @@ class SyncRequest(BaseModel):
     password: str
     dbname: str
     tables: List[str]
+    sensitive_tables: List[str] = []
+    sample_size: int = 10

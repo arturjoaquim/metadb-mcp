@@ -1,4 +1,4 @@
-from typing import List, Tuple, Callable, Type
+from typing import List, Tuple, Callable, Type, Optional
 
 
 from infrastructure.database.adapters.base_metadata_extractor import BaseMetadataExtractor
@@ -63,6 +63,8 @@ class SyncService:
         user: str,
         password: str,
         dbname: str,
+        sensitive_tables: Optional[List[str]] = None,
+        sample_size: int = 10,
     ) -> None:
         """Orquestra a sincronização de metadados do banco remoto para o cache local."""
         
@@ -80,12 +82,19 @@ class SyncService:
             for table_item in tables_to_sync:
                 orig_schema, orig_table_name = self._parse_table_name(table_item, default_schema)
 
+                # Determinar se a tabela é sensível
+                is_sensitive = table_item in (sensitive_tables or [])
+
                 # Extração via adapter
                 columns = adapter.extract_columns(orig_table_name, schema=orig_schema)
                 indexes = adapter.extract_indexes(orig_table_name, schema=orig_schema)
                 pk = adapter.extract_pk_constraint(orig_table_name, schema=orig_schema)
                 fks = adapter.extract_foreign_keys(orig_table_name, schema=orig_schema)
-                samples = adapter.extract_sample_rows(orig_table_name, schema=orig_schema)
+                
+                # Coleta de amostras apenas se não for tabela sensível
+                samples = [] if is_sensitive else adapter.extract_sample_rows(
+                    orig_table_name, schema=orig_schema, limit=sample_size
+                )
                 
                 table_comment = adapter.get_table_comment(inspector, orig_table_name, orig_schema)
 
@@ -101,6 +110,8 @@ class SyncService:
                     indexes=indexes,
                     constraints=constraints,
                     samples=samples,
+                    is_sensitive=is_sensitive,
+                    sample_size=sample_size,
                 )
 
             session.commit()

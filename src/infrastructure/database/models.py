@@ -24,6 +24,8 @@ class MetadataTable(Base):
     table_name = Column(String(255), nullable=False)
     schema_name = Column(String(255))
     comment = Column(Text)
+    is_sensitive = Column(Integer, default=0)  # 0 = False, 1 = True
+    sample_size = Column(Integer, default=10)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

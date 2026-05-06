@@ -21,7 +21,9 @@ def test_get_table_description_found(metadata_service: MetadataService) -> None:
     result = metadata_service.get_table_description("users")
     
     # Assert
-    assert "Descrição da tabela public.users: Tabela de usuários" in result
+    assert "Descrição da tabela public.users:" in result
+    assert "- Comentário: Tabela de usuários" in result
+    assert "- Sensível: NÃO" in result
 
 def test_search_metadata_unified(metadata_service: MetadataService) -> None:
     """Valida a busca unificada por nome e comentário."""
@@ -37,3 +39,17 @@ def test_search_metadata_unified(metadata_service: MetadataService) -> None:
     # Assert
     assert "Tabelas encontradas (nome ou comentário):" in result
     assert "public.users: Dados de clientes" in result
+
+def test_get_domain_context_sensitive_protection(metadata_service: MetadataService) -> None:
+    """Valida que get_domain_context protege tabelas marcadas como sensíveis."""
+    # Setup
+    mock_table = MetadataTable(table_name="sensitive", schema_name="public", is_sensitive=1)
+    metadata_service._metadata_dao_class = MagicMock()
+    metadata_service._metadata_dao_class.return_value.get_tables.return_value = [mock_table]
+    
+    # Execute
+    result = metadata_service.get_domain_context("sensitive")
+    
+    # Assert
+    assert "está marcada como sensível" in result
+    assert "não foram coletadas" in result

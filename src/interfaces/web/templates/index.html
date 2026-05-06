@@ -217,6 +217,10 @@
                                     <input type="text" id="tableSearch" placeholder="Pesquisar tabela..." class="bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none w-48 pl-8 placeholder-gray-500 transition-all">
                                     <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
                                 </div>
+                                <div class="flex items-center space-x-2 bg-gray-900/50 border border-gray-700 rounded-lg px-3 py-1.5">
+                                    <label for="sampleSize" class="text-[10px] uppercase font-bold text-gray-500">Amostra:</label>
+                                    <input type="number" id="sampleSize" value="10" min="1" max="1000" class="bg-transparent border-none text-white text-sm w-12 outline-none focus:ring-0">
+                                </div>
                                 <button id="btnSync" disabled class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium py-2 px-5 rounded-lg shadow-lg shadow-purple-500/25 transition-all opacity-50 cursor-not-allowed flex items-center">
                                     <i class="fa-solid fa-rotate mr-2"></i> Sincronizar
                                 </button>

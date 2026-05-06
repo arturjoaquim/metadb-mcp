@@ -38,17 +38,23 @@ class MetadataDAO:
             ).filter(DBConnection.dbname == dbname)
         return query.all()
 
-    def get_synced_tables_by_connection_name(self, conn_name: str) -> List[str]:
+    def get_synced_tables_by_connection_name(self, conn_name: str) -> List[Dict[str, Any]]:
+        """Retorna as tabelas sincronizadas de uma conexão com metadados de sensibilidade.
+
+        Cada item contém: name (str), is_sensitive (bool), sample_size (int).
+        """
         conn = self.session.query(DBConnection).filter_by(name=conn_name).first()
         if not conn:
             return []
         tables = self.session.query(MetadataTable).filter_by(connection_id=conn.id).all()
-        result = []
+        result: List[Dict[str, Any]] = []
         for t in tables:
-            if t.schema_name:
-                result.append(f"{t.schema_name}.{t.table_name}")
-            else:
-                result.append(t.table_name)
+            name = f"{t.schema_name}.{t.table_name}" if t.schema_name else t.table_name
+            result.append({
+                "name": name,
+                "is_sensitive": bool(t.is_sensitive),
+                "sample_size": t.sample_size,
+            })
         return result
 
     def get_all_tables(self) -> List[MetadataTable]:
@@ -134,6 +140,8 @@ class MetadataDAO:
         indexes: List[ExtractedIndex],
         constraints: List[ExtractedConstraint],
         samples: List[Dict[str, Any]],
+        is_sensitive: bool = False,
+        sample_size: int = 10,
     ) -> MetadataTable:
         """Salva todos os metadados de uma tabela no cache local."""
         existing_table = self.get_existing_table(conn_id, table_name, schema)
@@ -145,6 +153,8 @@ class MetadataDAO:
             table_name=table_name,
             schema_name=schema,
             comment=comment.lower() if comment else None,
+            is_sensitive=1 if is_sensitive else 0,
+            sample_size=sample_size,
         )
         self.session.add(metadata_table)
         self.session.flush()
