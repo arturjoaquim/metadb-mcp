@@ -17,10 +17,9 @@ def init_mcp_controller(metadata_service: MetadataService) -> FastMCP:
 
     @mcp.tool()
     async def list_sync_tables() -> str:
-        """Lista todas as tabelas disponíveis no cache local que foram previamente autorizadas e sincronizadas pelo usuário.
-        Use esta ferramenta como primeiro passo para entender o escopo do banco de dados antes de detalhar colunas ou constraints.
-        Argumentos:
-            Nenhum.
+        """Lista todas as tabelas sincronizadas no cache local.
+        IMPORTANTE: Use esta ferramenta APENAS se você não tiver NENHUMA informação sobre as tabelas disponíveis (como trechos de nomes ou colunas).
+        Se você já tiver um palpite ou parte do nome/descrição da tabela, prefira usar 'search_metadata'.
         Retorno:
             Lista formatada com '- schema.tabela'."""
         error = _require_unlocked()
@@ -107,13 +106,32 @@ def init_mcp_controller(metadata_service: MetadataService) -> FastMCP:
 
 
     @mcp.tool()
-    async def search_metadata(query: str) -> str:
-        """Realiza uma busca textual por termos específicos nos nomes de tabelas e colunas do cache.
-        Use esta ferramenta para localizar onde uma informação específica pode estar armazenada quando você não conhece o nome da tabela.
+    async def get_table_description(
+        table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None
+    ) -> str:
+        """Retorna o comentário descritivo (propósito) de uma tabela específica.
+        Utilize esta ferramenta quando você já tiver o nome da tabela mas precisar entender seu contexto de negócio.
         Argumentos:
-            query (str): Termo de busca (ex: 'email', 'price', 'customer'). Obrigatório.
+            table_name (str): Nome exato da tabela. Obrigatório.
+            schema (Optional[str]): Nome do schema. Opcional.
+            dbname (Optional[str]): Nome do banco de dados. Opcional.
         Retorno:
-            Lista com as tabelas e colunas que contém o termo pesquisado em seus nomes."""
+            O comentário da tabela ou mensagem de erro."""
+        error = _require_unlocked()
+        if error:
+            return error
+            
+        return metadata_service.get_table_description(table_name, schema, dbname)
+
+
+    @mcp.tool()
+    async def search_metadata(query: str) -> str:
+        """Realiza uma busca textual nos nomes e comentários (descrições) de tabelas e colunas.
+        Use esta ferramenta para localizar tabelas ou colunas quando você NÃO conhece o nome exato, mas tem um palpite ou conceito de negócio (ex: 'email', 'cobrança').
+        Argumentos:
+            query (str): Termo de busca (nome ou conceito de negócio). Obrigatório.
+        Retorno:
+            Lista de tabelas e colunas que contenham o termo pesquisado em seus nomes ou comentários."""
         error = _require_unlocked()
         if error:
             return error

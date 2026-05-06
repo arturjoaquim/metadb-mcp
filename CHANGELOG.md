@@ -3,6 +3,24 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [5.3.0] - 2026-05-06
+### Added
+- Novos métodos no `SyncDAO` para consulta granular de colunas, índices, constraints, amostras e busca textual unificada, permitindo reaproveitamento de código em outros serviços.
+
+### Changed
+- Refatoração profunda do `MetadataService` para delegar todas as operações de banco de dados ao `SyncDAO`.
+- Encapsulamento de lógicas complexas de busca e consulta de metadados dentro da camada de infraestrutura (`SyncDAO`).
+- Remoção completa de dependências diretas de modelos SQLAlchemy e queries `session.query` na camada de aplicação (`MetadataService`), respeitando os princípios de Clean Architecture e SOLID.
+
+## [5.2.0] - 2026-05-06
+### Added
+- Nova ferramenta MCP `get_table_description` para obter o comentário descritivo de uma tabela específica usando nome exato, schema e dbname.
+- Ferramenta MCP `search_metadata` (unificada) para busca textual em nomes e comentários de tabelas e colunas.
+
+### Changed
+- Refatoração do `MetadataService` para unificar buscas por nome e comentário em um único método otimizado.
+- Atualização das instruções das ferramentas `list_sync_tables` para orientar os modelos a utilizarem a ferramenta de busca (`search_metadata`) em vez de listar todas as tabelas.
+
 ## [5.1.1] - 2026-05-06
 ### Fixed
 - Problemas de encoding ao salvar metadados e amostras no cache local, garantindo o uso de UTF-8 real e desativando sequências de escape JSON desnecessárias via `ensure_ascii=False`.

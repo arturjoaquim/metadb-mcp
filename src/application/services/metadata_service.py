@@ -10,10 +10,6 @@ from infrastructure.database.daos.sync_dao import SyncDAO
 from infrastructure.database.daos.connection_dao import ConnectionDAO
 from infrastructure.database.models import (
     SyncTable,
-    SyncColumn,
-    SyncIndex,
-    SyncConstraint,
-    SyncSample,
 )
 
 
@@ -71,7 +67,7 @@ class MetadataService:
             
         session = self._secure_conn.get_session()
         try:
-            tables = session.query(SyncTable).all()
+            tables = self._sync_dao_class(session).get_all_tables()
             if not tables:
                 return "Nenhuma tabela sincronizada no momento."
 
@@ -88,12 +84,13 @@ class MetadataService:
             
         session = self._secure_conn.get_session()
         try:
-            tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
+            sync_dao = self._sync_dao_class(session)
+            tables = sync_dao.get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
             if error_msg or not table:
                 return str(error_msg)
 
-            columns = session.query(SyncColumn).filter_by(table_id=table.id).all()
+            columns = sync_dao.get_columns_by_table_id(int(str(table.id)))
             result = [f"Colunas de {table_name}:"]
             for col in columns:
                 nullable = "NULL" if col.is_nullable else "NOT NULL"
@@ -110,12 +107,13 @@ class MetadataService:
             
         session = self._secure_conn.get_session()
         try:
-            tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
+            sync_dao = self._sync_dao_class(session)
+            tables = sync_dao.get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
             if error_msg or not table:
                 return str(error_msg)
 
-            indexes = session.query(SyncIndex).filter_by(table_id=table.id).all()
+            indexes = sync_dao.get_indexes_by_table_id(int(str(table.id)))
             if not indexes:
                 return f"Nenhum índice encontrado para '{table_name}'."
 
@@ -135,12 +133,13 @@ class MetadataService:
             
         session = self._secure_conn.get_session()
         try:
-            tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
+            sync_dao = self._sync_dao_class(session)
+            tables = sync_dao.get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
             if error_msg or not table:
                 return str(error_msg)
 
-            constraints = session.query(SyncConstraint).filter_by(table_id=table.id).all()
+            constraints = sync_dao.get_constraints_by_table_id(int(str(table.id)))
             if not constraints:
                 return f"Nenhuma constraint encontrada para '{table_name}'."
 
@@ -166,12 +165,13 @@ class MetadataService:
             
         session = self._secure_conn.get_session()
         try:
-            tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
+            sync_dao = self._sync_dao_class(session)
+            tables = sync_dao.get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
             if error_msg or not table:
                 return str(error_msg)
 
-            samples = session.query(SyncSample).filter_by(table_id=table.id).all()
+            samples = sync_dao.get_samples_by_table_id(int(str(table.id)))
             if not samples:
                 return f"Nenhuma amostra de dados encontrada para '{table_name}'."
 
@@ -182,39 +182,47 @@ class MetadataService:
         finally:
             session.close()
 
+    def get_table_description(self, table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None) -> str:
+        """Retorna o comentário descritivo de uma tabela específica."""
+        table_name = table_name.lower()
+        if schema:
+            schema = schema.lower()
+            
+        session = self._secure_conn.get_session()
+        try:
+            tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
+            table, error_msg = self._validate_tables(session, tables, table_name)
+            if error_msg or not table:
+                return str(error_msg)
+
+            comment = table.comment if table.comment else "Sem comentário disponível."
+            return f"Descrição da tabela {table.schema_name}.{table.table_name}: {comment}"
+        finally:
+            session.close()
+
     def search_metadata(self, query: str) -> str:
-        """Realiza busca textual por termos específicos nos nomes de tabelas e colunas."""
+        """Realiza busca textual nos nomes e comentários de tabelas e colunas."""
         query = query.lower()
         session = self._secure_conn.get_session()
         try:
             result = []
-            search_term = f"%{query}%"
+            sync_dao = self._sync_dao_class(session)
+            tables, columns = sync_dao.search_metadata(query)
 
-            # Buscar tabelas
-            tables = (
-                session.query(SyncTable)
-                .filter(SyncTable.table_name.ilike(search_term))
-                .all()
-            )
             if tables:
-                result.append("Tabelas encontradas:")
+                result.append("Tabelas encontradas (nome ou comentário):")
                 for t in tables:
-                    result.append(f"- {t.table_name}")
+                    comment = f": {t.comment}" if t.comment else ""
+                    result.append(f"- {t.schema_name}.{t.table_name}{comment}")
 
-            # Buscar colunas
-            columns = (
-                session.query(SyncColumn, SyncTable.table_name)
-                .join(SyncTable, SyncColumn.table_id == SyncTable.id)
-                .filter(SyncColumn.column_name.ilike(search_term))
-                .all()
-            )
             if columns:
-                result.append("\nColunas encontradas:")
-                for col, tbl_name in columns:
-                    result.append(f"- {col.column_name} (na tabela {tbl_name})")
+                result.append("\nColunas encontradas (nome ou comentário):")
+                for col, tbl_name, sch_name in columns:
+                    comment = f": {col.comment}" if col.comment else ""
+                    result.append(f"- {col.column_name} (na tabela {sch_name}.{tbl_name}){comment}")
 
             if not result:
-                return f"Nenhum resultado encontrado para o termo '{query}'."
+                return f"Nenhum resultado encontrado para o termo '{query}' em nomes ou comentários."
 
             return "\n".join(result)
         finally:
