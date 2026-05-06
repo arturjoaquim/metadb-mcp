@@ -6,10 +6,10 @@ sincronizados, fornecendo uma interface para a camada de controladores (MCP).
 
 from typing import Any, List, Optional, Tuple, Type
 from infrastructure.database.secure_connection import SecureConnectionManager
-from infrastructure.database.daos.sync_dao import SyncDAO
+from infrastructure.database.daos.metadata_dao import MetadataDAO
 from infrastructure.database.daos.connection_dao import ConnectionDAO
 from infrastructure.database.models import (
-    SyncTable,
+    MetadataTable,
 )
 
 
@@ -27,11 +27,11 @@ class MetadataService:
     def __init__(
         self,
         secure_conn: SecureConnectionManager,
-        sync_dao_class: Type[SyncDAO] = SyncDAO,
+        metadata_dao_class: Type[MetadataDAO] = MetadataDAO,
         connection_dao_class: Type[ConnectionDAO] = ConnectionDAO,
     ) -> None:
         self._secure_conn = secure_conn
-        self._sync_dao_class = sync_dao_class
+        self._metadata_dao_class = metadata_dao_class
         self._connection_dao_class = connection_dao_class
 
     def is_database_unlocked(self) -> bool:
@@ -39,8 +39,8 @@ class MetadataService:
         return bool(self._secure_conn.is_unlocked)
 
     def _validate_tables(
-        self, session: Any, tables: List[SyncTable], table_name: str
-    ) -> Tuple[Optional[SyncTable], Optional[str]]:
+        self, session: Any, tables: List[MetadataTable], table_name: str
+    ) -> Tuple[Optional[MetadataTable], Optional[str]]:
         if not tables:
             return (
                 None,
@@ -67,7 +67,7 @@ class MetadataService:
             
         session = self._secure_conn.get_session()
         try:
-            tables = self._sync_dao_class(session).get_all_tables()
+            tables = self._metadata_dao_class(session).get_all_tables()
             if not tables:
                 return "Nenhuma tabela sincronizada no momento."
 
@@ -84,13 +84,13 @@ class MetadataService:
             
         session = self._secure_conn.get_session()
         try:
-            sync_dao = self._sync_dao_class(session)
-            tables = sync_dao.get_tables(table_name, schema, dbname)
+            metadata_dao = self._metadata_dao_class(session)
+            tables = metadata_dao.get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
             if error_msg or not table:
                 return str(error_msg)
 
-            columns = sync_dao.get_columns_by_table_id(int(str(table.id)))
+            columns = metadata_dao.get_columns_by_table_id(int(str(table.id)))
             result = [f"Colunas de {table_name}:"]
             for col in columns:
                 nullable = "NULL" if col.is_nullable else "NOT NULL"
@@ -107,13 +107,13 @@ class MetadataService:
             
         session = self._secure_conn.get_session()
         try:
-            sync_dao = self._sync_dao_class(session)
-            tables = sync_dao.get_tables(table_name, schema, dbname)
+            metadata_dao = self._metadata_dao_class(session)
+            tables = metadata_dao.get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
             if error_msg or not table:
                 return str(error_msg)
 
-            indexes = sync_dao.get_indexes_by_table_id(int(str(table.id)))
+            indexes = metadata_dao.get_indexes_by_table_id(int(str(table.id)))
             if not indexes:
                 return f"Nenhum índice encontrado para '{table_name}'."
 
@@ -133,13 +133,13 @@ class MetadataService:
             
         session = self._secure_conn.get_session()
         try:
-            sync_dao = self._sync_dao_class(session)
-            tables = sync_dao.get_tables(table_name, schema, dbname)
+            metadata_dao = self._metadata_dao_class(session)
+            tables = metadata_dao.get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
             if error_msg or not table:
                 return str(error_msg)
 
-            constraints = sync_dao.get_constraints_by_table_id(int(str(table.id)))
+            constraints = metadata_dao.get_constraints_by_table_id(int(str(table.id)))
             if not constraints:
                 return f"Nenhuma constraint encontrada para '{table_name}'."
 
@@ -165,13 +165,13 @@ class MetadataService:
             
         session = self._secure_conn.get_session()
         try:
-            sync_dao = self._sync_dao_class(session)
-            tables = sync_dao.get_tables(table_name, schema, dbname)
+            metadata_dao = self._metadata_dao_class(session)
+            tables = metadata_dao.get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
             if error_msg or not table:
                 return str(error_msg)
 
-            samples = sync_dao.get_samples_by_table_id(int(str(table.id)))
+            samples = metadata_dao.get_samples_by_table_id(int(str(table.id)))
             if not samples:
                 return f"Nenhuma amostra de dados encontrada para '{table_name}'."
 
@@ -190,7 +190,7 @@ class MetadataService:
             
         session = self._secure_conn.get_session()
         try:
-            tables = self._sync_dao_class(session).get_tables(table_name, schema, dbname)
+            tables = self._metadata_dao_class(session).get_tables(table_name, schema, dbname)
             table, error_msg = self._validate_tables(session, tables, table_name)
             if error_msg or not table:
                 return str(error_msg)
@@ -206,8 +206,8 @@ class MetadataService:
         session = self._secure_conn.get_session()
         try:
             result = []
-            sync_dao = self._sync_dao_class(session)
-            tables, columns = sync_dao.search_metadata(query)
+            metadata_dao = self._metadata_dao_class(session)
+            tables, columns = metadata_dao.search_metadata(query)
 
             if tables:
                 result.append("Tabelas encontradas (nome ou comentário):")

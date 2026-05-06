@@ -8,7 +8,7 @@ infraestrutura.
 from typing import Any, Dict, List, Optional, Type
 
 from infrastructure.database.daos.connection_dao import ConnectionDAO
-from infrastructure.database.daos.sync_dao import SyncDAO
+from infrastructure.database.daos.metadata_dao import MetadataDAO
 from infrastructure.security.auth_service import AuthService
 from infrastructure.database.secure_connection import SecureConnectionManager
 from application.services.sync_service import SyncService
@@ -28,13 +28,13 @@ class DashboardService:
         auth_svc: AuthService,
         sync_svc: SyncService,
         connection_dao_class: Type[ConnectionDAO] = ConnectionDAO,
-        sync_dao_class: Type[SyncDAO] = SyncDAO,
+        metadata_dao_class: Type[MetadataDAO] = MetadataDAO,
     ) -> None:
         self._secure_conn = secure_conn
         self._auth_svc = auth_svc
         self.sync_service = sync_svc
         self._connection_dao_class = connection_dao_class
-        self._sync_dao_class = sync_dao_class
+        self._metadata_dao_class = metadata_dao_class
 
     def is_unlocked(self) -> bool:
         """Verifica se o banco de dados seguro está desbloqueado."""
@@ -87,7 +87,7 @@ class DashboardService:
         
         session = self._secure_conn.get_session()
         try:
-            synced_tables = self._sync_dao_class(session).get_synced_tables_by_connection_name(conn_name)
+            synced_tables = self._metadata_dao_class(session).get_synced_tables_by_connection_name(conn_name)
         finally:
             session.close()
             

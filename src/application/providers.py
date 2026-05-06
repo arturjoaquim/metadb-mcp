@@ -1,6 +1,6 @@
 """Composition Root — instancia e conecta todas as dependências."""
 
-from typing import Type
+
 
 from infrastructure.database import secure_connection
 from infrastructure.database.adapters import (
@@ -9,7 +9,7 @@ from infrastructure.database.adapters import (
     OracleMetadataExtractor,
 )
 from infrastructure.database.daos.connection_dao import ConnectionDAO
-from infrastructure.database.daos.sync_dao import SyncDAO
+from infrastructure.database.daos.metadata_dao import MetadataDAO
 from infrastructure.security.auth_service import AuthService
 
 from application.services.sync_service import SyncService
@@ -36,7 +36,7 @@ sync_service = SyncService(
     secure_conn=secure_connection,
     extractor_factory=create_metadata_extractor,
     connection_dao_class=ConnectionDAO,
-    sync_dao_class=SyncDAO,
+    metadata_dao_class=MetadataDAO,
 )
 
 dashboard_service = DashboardService(
@@ -44,11 +44,11 @@ dashboard_service = DashboardService(
     auth_svc=auth_service,
     sync_svc=sync_service,
     connection_dao_class=ConnectionDAO,
-    sync_dao_class=SyncDAO,
+    metadata_dao_class=MetadataDAO,
 )
 
 metadata_service = MetadataService(
     secure_conn=secure_connection,
-    sync_dao_class=SyncDAO,
+    metadata_dao_class=MetadataDAO,
     connection_dao_class=ConnectionDAO,
 )

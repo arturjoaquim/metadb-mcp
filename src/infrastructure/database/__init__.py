@@ -9,11 +9,11 @@ from .models import (
     AppConfig,
     Base,
     DBConnection,
-    SyncColumn,
-    SyncConstraint,
-    SyncIndex,
-    SyncSample,
-    SyncTable,
+    MetadataColumn,
+    MetadataConstraint,
+    MetadataIndex,
+    MetadataSample,
+    MetadataTable,
 )
 from .secure_connection import SecureConnectionManager
 
@@ -26,9 +26,9 @@ __all__: list[str] = [
     "Base",
     "AppConfig",
     "DBConnection",
-    "SyncTable",
-    "SyncColumn",
-    "SyncConstraint",
-    "SyncIndex",
-    "SyncSample",
+    "MetadataTable",
+    "MetadataColumn",
+    "MetadataConstraint",
+    "MetadataIndex",
+    "MetadataSample",
 ]

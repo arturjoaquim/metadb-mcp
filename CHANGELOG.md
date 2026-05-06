@@ -3,6 +3,30 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [6.1.0] - 2026-05-06
+### Added
+- Novas dataclasses em `extracted_metadata.py` para representar metadados extraídos de forma agnóstica ao ORM.
+- Métodos de extração no `BaseMetadataExtractor` (`extract_columns`, `extract_indexes`, etc.) que encapsulam a lógica de inspeção do SQLAlchemy e normalizam os dados.
+- Método `save_table_metadata` no `MetadataDAO` para encapsular a persistência completa de uma tabela e seus metadados (colunas, índices, constraints, amostras).
+
+### Changed
+- Refatoração do `SyncService` para remover o conhecimento direto de conceitos de banco de dados (SQLAlchemy Inspector, queries raw, criação de modelos ORM).
+- O `SyncService` agora atua como um orquestrador puro, delegando a extração ao `Extractor` e a persistência ao `MetadataDAO`.
+- Centralização da lógica de normalização para minúsculo na camada de infraestrutura (Extractors e DAOs).
+
+## [6.0.0] - 2026-05-06
+### Added
+- Renomeação completa de todos os modelos ORM de metadados (`SyncTable`, `SyncColumn`, etc.) para `MetadataTable`, `MetadataColumn`, etc.
+
+### Changed
+- [BREAKING CHANGE] Renomeação dos nomes das tabelas no banco de dados local (`sync_tables` -> `metadata_tables`, etc.). Bancos existentes precisam ser recriados.
+- Atualização de todas as chaves estrangeiras e referências no código para refletir a nova nomenclatura focada em metadados.
+
+## [5.3.1] - 2026-05-06
+### Changed
+- Renomeação do `SyncDAO` para `MetadataDAO` e do arquivo `sync_dao.py` para `metadata_dao.py` para melhor clareza semântica e evitar confusão com o `SyncService`.
+- Atualização de todas as referências e injeções de dependência para refletir o novo nome do DAO em todos os serviços e provedores.
+
 ## [5.3.0] - 2026-05-06
 ### Added
 - Novos métodos no `SyncDAO` para consulta granular de colunas, índices, constraints, amostras e busca textual unificada, permitindo reaproveitamento de código em outros serviços.
