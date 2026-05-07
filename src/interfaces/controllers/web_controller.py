@@ -123,6 +123,7 @@ def init_web_controller(dashboard_service: DashboardService) -> APIRouter:
                 password=req.password,
                 dbname=req.dbname,
                 conn_name=req.conn_name,
+                driver_path=req.driver_path,
             )
         except DashboardServiceError as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -141,6 +142,7 @@ def init_web_controller(dashboard_service: DashboardService) -> APIRouter:
                 user=req.user,
                 password=req.password,
                 dbname=req.dbname,
+                driver_path=req.driver_path,
                 sensitive_tables=req.sensitive_tables,
                 sample_size=req.sample_size,
             )

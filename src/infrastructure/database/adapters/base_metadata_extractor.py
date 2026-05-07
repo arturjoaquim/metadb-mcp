@@ -5,12 +5,26 @@ from .extracted_metadata import ExtractedColumn, ExtractedIndex, ExtractedConstr
 
 
 class BaseMetadataExtractor(ABC):
-    def __init__(self, host: str, port: int, user: str, password: str, dbname: str):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        user: str,
+        password: str,
+        dbname: str,
+        driver_path: Optional[str] = None,
+    ):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
         self.dbname = dbname
+        self.driver_path = driver_path
+
+    @abstractmethod
+    def initialize_drivers(self) -> None:
+        """Inicializa os drivers necessários para a conexão com o banco de dados."""
+        pass
 
     @abstractmethod
     def build_connection_string(self) -> str:
@@ -18,6 +32,7 @@ class BaseMetadataExtractor(ABC):
         pass
 
     def get_engine(self) -> Any:
+        self.initialize_drivers()
         conn_str = self.build_connection_string()
         return create_engine(conn_str)
 
@@ -55,7 +70,9 @@ class BaseMetadataExtractor(ABC):
             print(f"Erro ao obter comentário da tabela {table_name}: {e}")
             return None
 
-    def extract_columns(self, table_name: str, schema: Optional[str] = None) -> List[ExtractedColumn]:
+    def extract_columns(
+        self, table_name: str, schema: Optional[str] = None
+    ) -> List[ExtractedColumn]:
         """Extrai e normaliza as colunas de uma tabela."""
         inspector = self.get_inspector()
         columns = inspector.get_columns(table_name, schema=schema)
@@ -64,13 +81,17 @@ class BaseMetadataExtractor(ABC):
                 name=str(col["name"]).lower(),
                 data_type=str(col["type"]),
                 is_nullable=bool(col.get("nullable", True)),
-                default_value=str(col.get("default", "")) if col.get("default") else None,
+                default_value=str(col.get("default", ""))
+                if col.get("default")
+                else None,
                 comment=col.get("comment").lower() if col.get("comment") else None,
             )
             for col in columns
         ]
 
-    def extract_indexes(self, table_name: str, schema: Optional[str] = None) -> List[ExtractedIndex]:
+    def extract_indexes(
+        self, table_name: str, schema: Optional[str] = None
+    ) -> List[ExtractedIndex]:
         """Extrai e normaliza os índices de uma tabela."""
         inspector = self.get_inspector()
         indexes = inspector.get_indexes(table_name, schema=schema)
@@ -83,7 +104,9 @@ class BaseMetadataExtractor(ABC):
             for idx in indexes
         ]
 
-    def extract_pk_constraint(self, table_name: str, schema: Optional[str] = None) -> Optional[ExtractedConstraint]:
+    def extract_pk_constraint(
+        self, table_name: str, schema: Optional[str] = None
+    ) -> Optional[ExtractedConstraint]:
         """Extrai a constraint de chave primária."""
         inspector = self.get_inspector()
         pk = inspector.get_pk_constraint(table_name, schema=schema)
@@ -95,7 +118,9 @@ class BaseMetadataExtractor(ABC):
             )
         return None
 
-    def extract_foreign_keys(self, table_name: str, schema: Optional[str] = None) -> List[ExtractedConstraint]:
+    def extract_foreign_keys(
+        self, table_name: str, schema: Optional[str] = None
+    ) -> List[ExtractedConstraint]:
         """Extrai as constraints de chave estrangeira."""
         inspector = self.get_inspector()
         fks = inspector.get_foreign_keys(table_name, schema=schema)
@@ -104,13 +129,17 @@ class BaseMetadataExtractor(ABC):
                 name=str(fk.get("name", "FK")).lower(),
                 constraint_type="FOREIGN KEY",
                 columns=[c.lower() for c in fk.get("constrained_columns", [])],
-                ref_table=str(fk.get("referred_table")).lower() if fk.get("referred_table") else None,
+                ref_table=str(fk.get("referred_table")).lower()
+                if fk.get("referred_table")
+                else None,
                 ref_columns=[c.lower() for c in fk.get("referred_columns", [])],
             )
             for fk in fks
         ]
 
-    def extract_sample_rows(self, table_name: str, schema: Optional[str] = None, limit: int = 10) -> List[Dict[str, Any]]:
+    def extract_sample_rows(
+        self, table_name: str, schema: Optional[str] = None, limit: int = 10
+    ) -> List[Dict[str, Any]]:
         """Extrai uma amostra de dados da tabela."""
         engine = self.get_engine()
         samples = []
@@ -127,7 +156,11 @@ class BaseMetadataExtractor(ABC):
 
                 for row in rows:
                     row_dict = {
-                        str(k).lower(): (v.decode("utf-8", errors="replace") if isinstance(v, bytes) else v)
+                        str(k).lower(): (
+                            v.decode("utf-8", errors="replace")
+                            if isinstance(v, bytes)
+                            else v
+                        )
                         for k, v in zip(keys, row)
                     }
                     samples.append(row_dict)

@@ -14,6 +14,7 @@ class DBConnection(Base):
     port = Column(Integer)
     user = Column(String(255))
     dbname = Column(String(255))  # dbname or sid/service_name
+    driver_path = Column(String(500), nullable=True)  # Caminho do driver (ex: Oracle Instant Client)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

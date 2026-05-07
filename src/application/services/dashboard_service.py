@@ -74,16 +74,28 @@ class DashboardService:
             session.close()
 
     def get_tables(
-        self, db_type: str, host: str, port: int, user: str, password: str, dbname: str, conn_name: str
+        self,
+        db_type: str,
+        host: str,
+        port: int,
+        user: str,
+        password: str,
+        dbname: str,
+        conn_name: str,
+        driver_path: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Testa conexão e retorna tabelas remotas e informações de sincronização."""
         if not self.is_unlocked():
             raise DashboardServiceError("Banco de dados bloqueado.")
 
-        if not self.sync_service.test_connection(db_type, host, port, user, password, dbname):
+        if not self.sync_service.test_connection(
+            db_type, host, port, user, password, dbname, driver_path=driver_path
+        ):
             raise DashboardServiceError("Falha na conexão com o banco de dados. Verifique as credenciais.")
 
-        tables = self.sync_service.get_all_tables(db_type, host, port, user, password, dbname)
+        tables = self.sync_service.get_all_tables(
+            db_type, host, port, user, password, dbname, driver_path=driver_path
+        )
         
         session = self._secure_conn.get_session()
         try:
@@ -103,6 +115,7 @@ class DashboardService:
         user: str,
         password: str,
         dbname: str,
+        driver_path: Optional[str] = None,
         sensitive_tables: Optional[List[str]] = None,
         sample_size: int = 10,
     ) -> None:
@@ -119,6 +132,7 @@ class DashboardService:
             user=user,
             password=password,
             dbname=dbname,
+            driver_path=driver_path,
             sensitive_tables=sensitive_tables,
             sample_size=sample_size,
         )

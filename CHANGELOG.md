@@ -3,6 +3,31 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [7.1.2] - 2026-05-07
+### Fixed
+- Corrigida a implementação de `OracleMetadataExtractor.get_all_tables()` que usava incorretamente `inspector.get_schema_names()` + `inspector.get_table_names(schema=X)`, uma abordagem que lista *todos os usuários do banco* (`ALL_USERS`) e tenta acessar tabelas de schemas sem permissão, retornando resultados incompletos ou incorretos.
+- A nova implementação consulta diretamente a view `ALL_TABLES`, que retorna apenas as tabelas visíveis ao usuário conectado, com filtro de schemas de sistema aplicado na própria query SQL.
+- Atualização dos testes unitários de `get_all_tables` para refletir a nova abordagem baseada em `engine.connect().execute()`.
+
+## [7.1.1] - 2026-05-07
+### Fixed
+- Melhoria na estabilidade do `OracleMetadataExtractor`: agora valida a existência do diretório do driver e trata erros de inicialização duplicada do `oracledb.init_oracle_client`, evitando crashes em reconexões.
+
+
+## [7.1.0] - 2026-05-07
+### Added
+- Campo opcional **Caminho do Driver** (`driver_path`) no dashboard para especificar o caminho absoluto do Oracle Instant Client. O campo é exibido condicionalmente apenas quando o tipo de banco é Oracle.
+- Novo campo `driver_path` no modelo `DBConnection` (genérico, reutilizável por qualquer tipo de banco no futuro).
+- Testes unitários para o `OracleMetadataExtractor`: validação de exclusão de schemas de sistema, comportamento do `initialize_drivers` com e sem `driver_path`, e propagação do `driver_path` pelo `SyncService`.
+
+### Changed
+- Refatoração do `OracleMetadataExtractor.get_all_tables()` para buscar tabelas de **todos os schemas**, excluindo ~30 schemas internos do Oracle (SYS, SYSTEM, XDB, APEX_*, etc.), igualando o comportamento ao `PostgresMetadataExtractor`.
+- `OracleMetadataExtractor.initialize_drivers()` agora só chama `oracledb.init_oracle_client()` quando `driver_path` é fornecido; caso contrário, não faz nada (modo thin do oracledb).
+- Propagação do `driver_path` por toda a cadeia: DTOs → WebController → DashboardService → SyncService → Factory → BaseMetadataExtractor → ConnectionDAO.
+
+### Fixed
+- Correção de testes pré-existentes: `ConcreteExtractor` em `test_base_metadata_extractor.py` agora implementa `initialize_drivers`, e lambdas de factory nos testes aceitam `**kwargs`.
+
 ## [7.0.0] - 2026-05-06
 ### Added
 - Funcionalidade de **Tabelas Sensíveis**: usuários podem marcar tabelas para que amostras de dados não sejam coletadas durante a sincronização.

@@ -31,17 +31,31 @@ class SyncService:
         self._metadata_dao_class = metadata_dao_class
 
     def test_connection(
-        self, db_type: str, host: str, port: int, user: str, password: str, dbname: str
+        self,
+        db_type: str,
+        host: str,
+        port: int,
+        user: str,
+        password: str,
+        dbname: str,
+        driver_path: Optional[str] = None,
     ) -> bool:
         """Testa conexão com um banco remoto."""
-        adapter = self._extractor_factory(db_type, host, port, user, password, dbname)
+        adapter = self._extractor_factory(db_type, host, port, user, password, dbname, driver_path=driver_path)
         return adapter.test_connection()
 
     def get_all_tables(
-        self, db_type: str, host: str, port: int, user: str, password: str, dbname: str
+        self,
+        db_type: str,
+        host: str,
+        port: int,
+        user: str,
+        password: str,
+        dbname: str,
+        driver_path: Optional[str] = None,
     ) -> List[str]:
         """Lista todas as tabelas do banco remoto."""
-        adapter = self._extractor_factory(db_type, host, port, user, password, dbname)
+        adapter = self._extractor_factory(db_type, host, port, user, password, dbname, driver_path=driver_path)
         return adapter.get_all_tables()
 
     def _parse_table_name(self, table_item: str, default_schema: str) -> Tuple[str, str]:
@@ -63,6 +77,7 @@ class SyncService:
         user: str,
         password: str,
         dbname: str,
+        driver_path: Optional[str] = None,
         sensitive_tables: Optional[List[str]] = None,
         sample_size: int = 10,
     ) -> None:
@@ -71,9 +86,9 @@ class SyncService:
         session = self.secure_conn.get_session()
         try:
             conn_dao = self._connection_dao_class(session)
-            conn_id = conn_dao.save(conn_name, db_type, host, port, user, dbname)
+            conn_id = conn_dao.save(conn_name, db_type, host, port, user, dbname, driver_path=driver_path)
             
-            adapter = self._extractor_factory(db_type, host, port, user, password, dbname)
+            adapter = self._extractor_factory(db_type, host, port, user, password, dbname, driver_path=driver_path)
             inspector = adapter.get_inspector()
             default_schema = adapter.get_default_schema(inspector)
 

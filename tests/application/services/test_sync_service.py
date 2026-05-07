@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from application.services.sync_service import SyncService
 
 class TestSyncService:
@@ -24,7 +24,7 @@ class TestSyncService:
         
         service = SyncService(
             mock_secure_conn, 
-            lambda *args: mock_extractor,
+            lambda *args, **kwargs: mock_extractor,
             metadata_dao_class=mock_metadata_dao_class
         )
         
@@ -59,10 +59,44 @@ class TestSyncService:
         mock_metadata_dao_class = MagicMock()
         service = SyncService(
             mock_secure_conn, 
-            lambda *args: mock_extractor,
+            lambda *args, **kwargs: mock_extractor,
             metadata_dao_class=mock_metadata_dao_class
         )
         
         service.sync_tables("conn", ["users"], "postgres", "h", 5432, "u", "p", "db")
         
         mock_extractor.extract_sample_rows.assert_called_once_with("users", schema="public", limit=10)
+
+    def test_sync_tables_propagates_driver_path_to_dao(self, mock_secure_conn, mock_extractor):
+        """Verifica que driver_path é repassado corretamente pela factory e ao DAO."""
+        mock_conn_dao_class = MagicMock()
+        mock_conn_dao = mock_conn_dao_class.return_value
+        mock_conn_dao.save.return_value = 1
+
+        mock_metadata_dao_class = MagicMock()
+
+        captured_kwargs = {}
+        def factory_spy(*args, **kwargs):
+            captured_kwargs.update(kwargs)
+            return mock_extractor
+
+        service = SyncService(
+            mock_secure_conn,
+            factory_spy,
+            connection_dao_class=mock_conn_dao_class,
+            metadata_dao_class=mock_metadata_dao_class,
+        )
+
+        service.sync_tables(
+            "conn", ["users"], "oracle", "h", 1521, "u", "p", "orcl",
+            driver_path="/opt/oracle/instantclient",
+        )
+
+        # Verificar que a factory recebeu driver_path
+        assert captured_kwargs.get("driver_path") == "/opt/oracle/instantclient"
+
+        # Verificar que o DAO recebeu driver_path
+        mock_conn_dao.save.assert_called_once_with(
+            "conn", "oracle", "h", 1521, "u", "orcl",
+            driver_path="/opt/oracle/instantclient",
+        )

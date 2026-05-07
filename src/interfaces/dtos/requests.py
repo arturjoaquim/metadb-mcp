@@ -1,6 +1,6 @@
 """Modelos de requisição e resposta da aplicação."""
 
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -21,6 +21,7 @@ class ConnectionRequest(BaseModel):
     user: str
     password: str
     dbname: str
+    driver_path: Optional[str] = None
 
 
 class SyncRequest(BaseModel):
@@ -33,6 +34,7 @@ class SyncRequest(BaseModel):
     user: str
     password: str
     dbname: str
+    driver_path: Optional[str] = None
     tables: List[str]
     sensitive_tables: List[str] = []
     sample_size: int = 10

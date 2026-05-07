@@ -17,6 +17,7 @@ class ConnectionDAO:
         return self.session.query(DBConnection).filter_by(name=name).first()
 
     def get_all(self) -> List[Dict[str, Any]]:
+        """Retorna todas as conexões salvas com seus atributos."""
         conns = self.session.query(DBConnection).all()
         return [
             {
@@ -26,13 +27,22 @@ class ConnectionDAO:
                 "port": c.port,
                 "user": c.user,
                 "dbname": c.dbname,
+                "driver_path": c.driver_path,
             }
             for c in conns
         ]
 
     def save(
-        self, name: str, db_type: str, host: str, port: int, user: str, dbname: str
+        self,
+        name: str,
+        db_type: str,
+        host: str,
+        port: int,
+        user: str,
+        dbname: str,
+        driver_path: Optional[str] = None,
     ) -> int:
+        """Persiste ou atualiza uma conexão pelo nome."""
         conn = self.get_by_name(name)
         if not conn:
             conn = DBConnection(
@@ -42,6 +52,7 @@ class ConnectionDAO:
                 port=port,
                 user=user,
                 dbname=dbname,
+                driver_path=driver_path,
             )
             self.session.add(conn)
         else:
@@ -50,5 +61,6 @@ class ConnectionDAO:
             conn.port = port
             conn.user = user
             conn.dbname = dbname
+            conn.driver_path = driver_path
         self.session.commit()
-        return int(conn.id) # type: ignore
+        return int(conn.id)  # type: ignore

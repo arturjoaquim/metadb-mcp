@@ -3,6 +3,8 @@ from unittest.mock import MagicMock, patch
 from infrastructure.database.adapters.base_metadata_extractor import BaseMetadataExtractor
 
 class ConcreteExtractor(BaseMetadataExtractor):
+    def initialize_drivers(self) -> None:
+        pass
     def build_connection_string(self) -> str:
         return "sqlite:///:memory:"
     def get_all_tables(self):

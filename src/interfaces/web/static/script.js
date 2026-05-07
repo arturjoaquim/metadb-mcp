@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedConnections = document.getElementById('savedConnections');
     const tableSearch = document.getElementById('tableSearch');
     const chkSelectAll = document.getElementById('chkSelectAll');
+    const driverPathGroup = document.getElementById('driverPathGroup');
+    const dbTypeSelect = document.getElementById('dbType');
 
     let availableTables = [];
     let syncedTables = [];
@@ -209,6 +211,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('dbName').value = '';
                 document.getElementById('dbUser').value = '';
                 document.getElementById('dbPass').value = '';
+                const driverPathInput = document.getElementById('driverPath');
+                if (driverPathInput) driverPathInput.value = '';
                 return;
             }
             const conn = connectionsData.find(c => c.name === val);
@@ -220,6 +224,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('dbName').value = conn.dbname;
                 document.getElementById('dbUser').value = conn.user;
                 document.getElementById('dbPass').value = '';
+                const driverPathInput = document.getElementById('driverPath');
+                if (driverPathInput) driverPathInput.value = conn.driver_path || '';
+                updateDriverPathVisibility();
                 document.getElementById('dbPass').focus();
             }
         });
@@ -227,6 +234,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // checkAuthStatus vai chamar loadConnections se unlocked
     checkAuthStatus();
+
+    // Toggle de visibilidade do campo de driver path conforme tipo de banco
+    function updateDriverPathVisibility() {
+        if (!driverPathGroup || !dbTypeSelect) return;
+        if (dbTypeSelect.value === 'oracle') {
+            driverPathGroup.style.display = '';
+        } else {
+            driverPathGroup.style.display = 'none';
+            const driverPathInput = document.getElementById('driverPath');
+            if (driverPathInput) driverPathInput.value = '';
+        }
+    }
+
+    if (dbTypeSelect) {
+        dbTypeSelect.addEventListener('change', updateDriverPathVisibility);
+        // Estado inicial
+        updateDriverPathVisibility();
+    }
 
     function showAlert(message, type = 'error') {
         alertBox.className = `mt-4 rounded-lg p-4 text-sm flex items-start shadow-lg ${type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
@@ -253,6 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getFormData() {
+        const driverPathValue = (document.getElementById('driverPath')?.value || '').trim();
         return {
             conn_name: document.getElementById('connName').value,
             db_type: document.getElementById('dbType').value,
@@ -260,7 +286,8 @@ document.addEventListener('DOMContentLoaded', () => {
             port: parseInt(document.getElementById('dbPort').value, 10),
             dbname: document.getElementById('dbName').value,
             user: document.getElementById('dbUser').value,
-            password: document.getElementById('dbPass').value
+            password: document.getElementById('dbPass').value,
+            driver_path: driverPathValue || null
         };
     }
 

@@ -51,7 +51,7 @@ class TestLowercaseStandard:
         
         service = SyncService(
             mock_secure_conn, 
-            lambda *args: mock_extractor,
+            lambda *args, **kwargs: mock_extractor,
             metadata_dao_class=mock_metadata_dao_class
         )
         

@@ -1,6 +1,6 @@
 """Composition Root — instancia e conecta todas as dependências."""
 
-
+from typing import Optional
 
 from infrastructure.database import secure_connection
 from infrastructure.database.adapters import (
@@ -18,13 +18,19 @@ from application.services.metadata_service import MetadataService
 
 
 def create_metadata_extractor(
-    db_type: str, host: str, port: int, user: str, password: str, dbname: str
+    db_type: str,
+    host: str,
+    port: int,
+    user: str,
+    password: str,
+    dbname: str,
+    driver_path: Optional[str] = None,
 ) -> BaseMetadataExtractor:
     """Factory function para criação de extratores de metadados."""
     if db_type == "postgresql":
-        return PostgresMetadataExtractor(host, port, user, password, dbname)
+        return PostgresMetadataExtractor(host, port, user, password, dbname, driver_path=driver_path)
     elif db_type == "oracle":
-        return OracleMetadataExtractor(host, port, user, password, dbname)
+        return OracleMetadataExtractor(host, port, user, password, dbname, driver_path=driver_path)
     raise ValueError(f"Tipo de banco não suportado: {db_type}")
 
 
