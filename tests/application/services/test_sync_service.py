@@ -100,3 +100,31 @@ class TestSyncService:
             "conn", "oracle", "h", 1521, "u", "orcl",
             driver_path="/opt/oracle/instantclient",
         )
+
+    def test_sync_tables_is_case_insensitive_for_sensitive_tables(self, mock_secure_conn, mock_extractor):
+        """Verifica que a identificação de tabelas sensíveis ignora a caixa."""
+        mock_metadata_dao_class = MagicMock()
+        mock_metadata_dao = mock_metadata_dao_class.return_value
+        
+        service = SyncService(
+            mock_secure_conn, 
+            lambda *args, **kwargs: mock_extractor,
+            metadata_dao_class=mock_metadata_dao_class
+        )
+        
+        # Nome original com maiúsculo (como vem do Oracle)
+        # Marcado como sensível em minúsculo (como o frontend pode enviar)
+        original_table = "PUBLIC.EMPLOYEES"
+        sensitive_marker = "public.employees"
+        
+        service.sync_tables(
+            "conn", [original_table], "oracle", "h", 1521, "u", "p", "db",
+            sensitive_tables=[sensitive_marker]
+        )
+        
+        # Deve ter identificado como sensível apesar da diferença de caixa
+        call = mock_metadata_dao.save_table_metadata.call_args
+        assert call.kwargs["is_sensitive"] is True
+        # E deve ter salvo como minúsculo no cache
+        assert call.kwargs["table_name"] == "employees"
+        assert call.kwargs["schema"] == "public"

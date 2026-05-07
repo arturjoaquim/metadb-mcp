@@ -314,14 +314,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 availableTables = result.tables;
                 const syncedData = result.synced_tables || [];
 
-                // Extrair nomes e restaurar estado de sensibilidade do cache
-                syncedTables = syncedData.map(t => t.name);
+                // Extrair nomes e restaurar estado de sensibilidade do cache (sempre em minúsculo no cache)
+                syncedTables = syncedData.map(t => t.name.toLowerCase());
                 selectedTables.clear();
                 sensitiveTables.clear();
 
                 syncedData.forEach(t => {
                     if (t.is_sensitive) {
-                        sensitiveTables.add(t.name);
+                        sensitiveTables.add(t.name.toLowerCase());
                     }
                 });
 
@@ -360,8 +360,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         tablesContainer.innerHTML = availableTables.map((table, index) => {
-            const isSynced = syncedTables.includes(table);
-            const isSensitive = sensitiveTables.has(table);
+            const isSynced = syncedTables.includes(table.toLowerCase());
+            const isSensitive = sensitiveTables.has(table.toLowerCase());
             const badge = isSynced ? `<span class="ml-auto text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full border border-green-500/30">Sincronizada</span>` : '';
             const sensitiveClass = isSensitive ? 'text-red-400' : 'text-gray-500 hover:text-red-400';
             const sensitiveTitle = isSensitive ? 'Remover marcação de sensível' : 'Marcar como sensível (não coleta amostras)';
@@ -383,10 +383,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Define a função toggleSensitive no escopo global para o onclick funcionar
         window.toggleSensitive = (table) => {
-            if (sensitiveTables.has(table)) {
-                sensitiveTables.delete(table);
+            const tableLower = table.toLowerCase();
+            if (sensitiveTables.has(tableLower)) {
+                sensitiveTables.delete(tableLower);
             } else {
-                sensitiveTables.add(table);
+                sensitiveTables.add(tableLower);
             }
             renderTables();
         };

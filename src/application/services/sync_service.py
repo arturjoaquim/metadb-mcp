@@ -97,8 +97,8 @@ class SyncService:
             for table_item in tables_to_sync:
                 orig_schema, orig_table_name = self._parse_table_name(table_item, default_schema)
 
-                # Determinar se a tabela é sensível
-                is_sensitive = table_item in (sensitive_tables or [])
+                # Determinar se a tabela é sensível (comparação case-insensitive)
+                is_sensitive = table_item.lower() in [t.lower() for t in (sensitive_tables or [])]
 
                 # Extração via adapter
                 columns = adapter.extract_columns(orig_table_name, schema=orig_schema)

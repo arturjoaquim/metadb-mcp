@@ -3,6 +3,12 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [7.1.3] - 2026-05-07
+### Fixed
+- Corrigida a falha na exibição do estado de sincronização e sensibilidade das tabelas no dashboard. A solução implementa comparação *case-insensitive* entre os nomes retornados pelo banco remoto e os metadados do cache local.
+- Preservação da visualização original dos nomes das tabelas (ex: nomes em maiúsculo no Oracle permanecem em maiúsculo na tela) enquanto garante a correta identificação do status de sincronização.
+- Ajuste no `SyncService` para que a detecção de tabelas sensíveis durante a sincronização também ignore a caixa dos caracteres.
+
 ## [7.1.2] - 2026-05-07
 ### Fixed
 - Corrigida a implementação de `OracleMetadataExtractor.get_all_tables()` que usava incorretamente `inspector.get_schema_names()` + `inspector.get_table_names(schema=X)`, uma abordagem que lista *todos os usuários do banco* (`ALL_USERS`) e tenta acessar tabelas de schemas sem permissão, retornando resultados incompletos ou incorretos.
