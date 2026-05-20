@@ -44,7 +44,7 @@ class TestSyncService:
         assert any("Persistindo informações de conexão" in c for c in calls)
         assert any("Processando tabela" in c for c in calls)
         assert any("Extraindo colunas" in c for c in calls)
-        assert any("Confirmando transação" in c for c in calls)
+        assert any("Transação confirmada" in c for c in calls)
 
     def test_sync_tables_skips_samples_for_sensitive_tables(self, mock_secure_conn, mock_extractor):
         # Setup

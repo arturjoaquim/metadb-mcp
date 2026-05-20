@@ -83,6 +83,129 @@ class SyncService:
             orig_table_name = table_item
         return orig_schema, orig_table_name
 
+    def _sync_single_table(
+        self,
+        table_item: str,
+        adapter: BaseMetadataExtractor,
+        metadata_dao: MetadataDAO,
+        conn_id: int,
+        default_schema: str,
+        sensitive_tables: Optional[List[str]],
+        sample_size: int,
+    ) -> None:
+        """Executa a extração e persistência dos metadados para uma única tabela."""
+        orig_schema: str
+        orig_table_name: str
+        orig_schema, orig_table_name = self._parse_table_name(
+            table_item, default_schema
+        )
+        logger.info(
+            "Nome da tabela analisado -> Schema: '%s', Nome: '%s'.",
+            orig_schema,
+            orig_table_name,
+        )
+
+        # Determinar se a tabela é sensível (comparação case-insensitive)
+        is_sensitive: bool = table_item.lower() in [
+            t.lower() for t in (sensitive_tables or [])
+        ]
+        if is_sensitive:
+            logger.info(
+                "A tabela '%s.%s' foi marcada como SENSÍVEL. Amostras de dados não serão coletadas.",
+                orig_schema,
+                orig_table_name,
+            )
+        else:
+            logger.info(
+                "A tabela '%s.%s' não é sensível. Coleta de amostras ativada (limite: %d).",
+                orig_schema,
+                orig_table_name,
+                sample_size,
+            )
+
+        # Extração via adapter
+        logger.info("Extraindo colunas da tabela '%s.%s'.", orig_schema, orig_table_name)
+        columns: List[ExtractedColumn] = adapter.extract_columns(
+            orig_table_name, schema=orig_schema
+        )
+        logger.info(
+            "Extraídas %d colunas para a tabela '%s.%s'.",
+            len(columns),
+            orig_schema,
+            orig_table_name,
+        )
+
+        logger.info("Extraindo índices da tabela '%s.%s'.", orig_schema, orig_table_name)
+        indexes: List[ExtractedIndex] = adapter.extract_indexes(
+            orig_table_name, schema=orig_schema
+        )
+        logger.info(
+            "Extraídos %d índices para a tabela '%s.%s'.",
+            len(indexes),
+            orig_schema,
+            orig_table_name,
+        )
+
+        logger.info("Extraindo chave primária da tabela '%s.%s'.", orig_schema, orig_table_name)
+        pk: Optional[ExtractedConstraint] = adapter.extract_pk_constraint(
+            orig_table_name, schema=orig_schema
+        )
+        if pk:
+            logger.info("Chave primária encontrada para a tabela '%s.%s'.", orig_schema, orig_table_name)
+        else:
+            logger.info("Nenhuma chave primária encontrada para a tabela '%s.%s'.", orig_schema, orig_table_name)
+
+        logger.info("Extraindo chaves estrangeiras da tabela '%s.%s'.", orig_schema, orig_table_name)
+        fks: List[ExtractedConstraint] = adapter.extract_foreign_keys(
+            orig_table_name, schema=orig_schema
+        )
+        logger.info(
+            "Extraídas %d chaves estrangeiras para a tabela '%s.%s'.",
+            len(fks),
+            orig_schema,
+            orig_table_name,
+        )
+
+        # Coleta de amostras apenas se não for tabela sensível
+        samples: List[Dict[str, Any]]
+        if is_sensitive:
+            samples = []
+        else:
+            logger.info("Coletando amostras de dados para a tabela '%s.%s'.", orig_schema, orig_table_name)
+            samples = adapter.extract_sample_rows(
+                orig_table_name, schema=orig_schema, limit=sample_size
+            )
+            logger.info(
+                "Coletadas %d linhas de amostra para a tabela '%s.%s'.",
+                len(samples),
+                orig_schema,
+                orig_table_name,
+            )
+
+        logger.info("Obtendo comentário descritivo da tabela '%s.%s'.", orig_schema, orig_table_name)
+        table_comment: Optional[str] = adapter.get_table_comment(
+            adapter.get_inspector(), orig_table_name, orig_schema
+        )
+        logger.info("Comentário descritivo obtido para a tabela '%s.%s'.", orig_schema, orig_table_name)
+
+        constraints: List[ExtractedConstraint] = ([pk] if pk else []) + fks
+
+        # Persistência via DAO
+        logger.info("Persistindo metadados da tabela '%s.%s' no cache local.", orig_schema, orig_table_name)
+        metadata_dao.save_table_metadata(
+            conn_id=conn_id,
+            table_name=orig_table_name.lower(),
+            schema=orig_schema.lower() if orig_schema else None,
+            comment=table_comment,
+            columns=columns,
+            indexes=indexes,
+            constraints=constraints,
+            samples=samples,
+            is_sensitive=is_sensitive,
+            sample_size=sample_size,
+        )
+        logger.info("Metadados da tabela '%s.%s' persistidos com sucesso.", orig_schema, orig_table_name)
+
     def sync_tables(
         self,
         conn_name: str,
@@ -114,9 +237,9 @@ class SyncService:
             conn_id: int = conn_dao.save(
                 conn_name, db_type, host, port, user, dbname, driver_path=driver_path
             )
-            # Commit connection info immediately so it exists for tables
+            # Commit connection immediately so FKs work and it is persisted even if tables fail
             session.commit()
-            logger.info("Informações de conexão salvas e persistidas com sucesso.")
+            logger.info("Informações de conexão salvas com sucesso.")
 
             logger.info("Inicializando extrator de metadados para o banco remoto.")
             adapter: BaseMetadataExtractor = self._extractor_factory(
@@ -129,7 +252,7 @@ class SyncService:
             logger.info("Schema padrão identificado: '%s'.", default_schema)
 
             metadata_dao: MetadataDAO = self._metadata_dao_class(session)
-
+            
             logger.info("Realizando pré-carregamento (se suportado) dos metadados das tabelas solicitadas.")
             if hasattr(adapter, "preload_metadata"):
                 adapter.preload_metadata(tables_to_sync, default_schema)
@@ -139,161 +262,20 @@ class SyncService:
             for table_item in tables_to_sync:
                 try:
                     logger.info("Processando tabela: '%s'.", table_item)
-                orig_schema: str
-                orig_table_name: str
-                orig_schema, orig_table_name = self._parse_table_name(
-                    table_item, default_schema
-                )
-                logger.info(
-                    "Nome da tabela analisado -> Schema: '%s', Nome: '%s'.",
-                    orig_schema,
-                    orig_table_name,
-                )
-
-                # Determinar se a tabela é sensível (comparação case-insensitive)
-                is_sensitive: bool = table_item.lower() in [
-                    t.lower() for t in (sensitive_tables or [])
-                ]
-                if is_sensitive:
-                    logger.info(
-                        "A tabela '%s.%s' foi marcada como SENSÍVEL. Amostras de dados não serão coletadas.",
-                        orig_schema,
-                        orig_table_name,
+                    self._sync_single_table(
+                        table_item=table_item,
+                        adapter=adapter,
+                        metadata_dao=metadata_dao,
+                        conn_id=conn_id,
+                        default_schema=default_schema,
+                        sensitive_tables=sensitive_tables,
+                        sample_size=sample_size,
                     )
-                else:
-                    logger.info(
-                        "A tabela '%s.%s' não é sensível. Coleta de amostras ativada (limite: %d).",
-                        orig_schema,
-                        orig_table_name,
-                        sample_size,
-                    )
-
-                # Extração via adapter
-                logger.info(
-                    "Extraindo colunas da tabela '%s.%s'.", orig_schema, orig_table_name
-                )
-                columns: List[ExtractedColumn] = adapter.extract_columns(
-                    orig_table_name, schema=orig_schema
-                )
-                logger.info(
-                    "Extraídas %d colunas para a tabela '%s.%s'.",
-                    len(columns),
-                    orig_schema,
-                    orig_table_name,
-                )
-
-                logger.info(
-                    "Extraindo índices da tabela '%s.%s'.", orig_schema, orig_table_name
-                )
-                indexes: List[ExtractedIndex] = adapter.extract_indexes(
-                    orig_table_name, schema=orig_schema
-                )
-                logger.info(
-                    "Extraídos %d índices para a tabela '%s.%s'.",
-                    len(indexes),
-                    orig_schema,
-                    orig_table_name,
-                )
-
-                logger.info(
-                    "Extraindo chave primária da tabela '%s.%s'.",
-                    orig_schema,
-                    orig_table_name,
-                )
-                pk: Optional[ExtractedConstraint] = adapter.extract_pk_constraint(
-                    orig_table_name, schema=orig_schema
-                )
-                if pk:
-                    logger.info(
-                        "Chave primária encontrada para a tabela '%s.%s'.",
-                        orig_schema,
-                        orig_table_name,
-                    )
-                else:
-                    logger.info(
-                        "Nenhuma chave primária encontrada para a tabela '%s.%s'.",
-                        orig_schema,
-                        orig_table_name,
-                    )
-
-                logger.info(
-                    "Extraindo chaves estrangeiras da tabela '%s.%s'.",
-                    orig_schema,
-                    orig_table_name,
-                )
-                fks: List[ExtractedConstraint] = adapter.extract_foreign_keys(
-                    orig_table_name, schema=orig_schema
-                )
-                logger.info(
-                    "Extraídas %d chaves estrangeiras para a tabela '%s.%s'.",
-                    len(fks),
-                    orig_schema,
-                    orig_table_name,
-                )
-
-                # Coleta de amostras apenas se não for tabela sensível
-                samples: List[Dict[str, Any]]
-                if is_sensitive:
-                    samples = []
-                else:
-                    logger.info(
-                        "Coletando amostras de dados para a tabela '%s.%s'.",
-                        orig_schema,
-                        orig_table_name,
-                    )
-                    samples = adapter.extract_sample_rows(
-                        orig_table_name, schema=orig_schema, limit=sample_size
-                    )
-                    logger.info(
-                        "Coletadas %d linhas de amostra para a tabela '%s.%s'.",
-                        len(samples),
-                        orig_schema,
-                        orig_table_name,
-                    )
-
-                logger.info(
-                    "Obtendo comentário descritivo da tabela '%s.%s'.",
-                    orig_schema,
-                    orig_table_name,
-                )
-                table_comment: Optional[str] = adapter.get_table_comment(
-                    inspector, orig_table_name, orig_schema
-                )
-                logger.info(
-                    "Comentário descritivo obtido para a tabela '%s.%s'.",
-                    orig_schema,
-                    orig_table_name,
-                )
-
-                constraints: List[ExtractedConstraint] = ([pk] if pk else []) + fks
-
-                logger.info(
-                    "Persistindo metadados da tabela '%s.%s' no cache local.",
-                    orig_schema,
-                    orig_table_name,
-                )
-                metadata_dao.save_table_metadata(
-                    conn_id=conn_id,
-                    table_name=orig_table_name.lower(),
-                    schema=orig_schema.lower() if orig_schema else None,
-                    comment=table_comment,
-                    columns=columns,
-                    indexes=indexes,
-                    constraints=constraints,
-                    samples=samples,
-                    is_sensitive=is_sensitive,
-                    sample_size=sample_size,
-                )
-                logger.info(
-                    "Metadados da tabela '%s.%s' persistidos com sucesso.",
-                    orig_schema,
-                    orig_table_name,
-                )
-                
-                # Faz o commit individual para esta tabela
-                session.commit()
-                logger.info("Transação confirmada para a tabela '%s.%s'.", orig_schema, orig_table_name)
-                
+                    
+                    # Faz o commit individual para esta tabela
+                    session.commit()
+                    logger.info("Transação confirmada para a tabela '%s'.", table_item)
+                    
                 except Exception as table_exc:
                     logger.error(
                         "Erro ao sincronizar a tabela '%s': %s. Realizando rollback apenas desta tabela.",
@@ -312,14 +294,13 @@ class SyncService:
             logger.info("Sincronização concluída. Todas as tabelas foram processadas com sucesso.")
 
         except SyncServiceError:
-            # Exceção já tratada e formatada internamente, apenas propaga
+            # Exceção já tratada internamente
             raise
         except Exception as e:
             logger.error(
                 "Erro fatal ocorrido durante a sincronização de tabelas.",
                 exc_info=True,
             )
-            # Como a conexão pode ter ficado em estado inválido na exceção global
             session.rollback()
             raise SyncServiceError(f"Erro fatal na sincronização: {e}") from e
         finally:

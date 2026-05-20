@@ -167,3 +167,12 @@ class BaseMetadataExtractor(ABC):
         except Exception as e:
             print(f"Erro ao obter amostras da tabela {table_name}: {e}")
         return samples
+
+    def preload_metadata(self, tables: List[str], default_schema: str) -> None:
+        """Pré-carrega metadados das tabelas fornecidas.
+        
+        Implementações otimizadas (como o Oracle) podem sobrescrever este método
+        para buscar dados de várias tabelas de uma vez, reduzindo a latência de rede.
+        O padrão é um no-op.
+        """
+        pass

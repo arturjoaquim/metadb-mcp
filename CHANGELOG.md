@@ -3,6 +3,16 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [7.2.0] - 2026-05-19
+### Added
+- Teste de integração (`test_sync_service_oracle.py`) para validar as transações isoladas e captura de erros globais no Oracle.
+- Adicionado o método abstrato `preload_metadata` em `BaseMetadataExtractor` para viabilizar otimizações em lote na extração.
+
+### Changed
+- Refatoração da transação principal no `SyncService.sync_tables`. Agora a sincronização ocorre com commit isolado por tabela. Caso uma tabela falhe, ela não aborta ou invalida o processo das tabelas que já tiveram sucesso.
+- O `SyncService.sync_tables` agora lança uma exceção global (`SyncServiceError`) ao final do processo listando todas as tabelas que não puderam ser sincronizadas.
+- Otimização crítica de performance no `OracleMetadataExtractor`. As chamadas isoladas por tabela utilizando o *Inspector* (que demoravam consideravelmente) foram substituídas por um `preload_metadata` que executa consultas únicas otimizadas nas views do sistema (`ALL_TAB_COLUMNS`, `ALL_CONSTRAINTS`, `ALL_INDEXES`) trazendo em cache a metadados de todas as tabelas em batch antes da persistência local.
+
 ## [7.1.4] - 2026-05-19
 ### Changed
 - Adicionado logging detalhado a cada etapa do processo de sincronização no método `SyncService.sync_tables`.
