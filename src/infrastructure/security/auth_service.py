@@ -88,8 +88,7 @@ class AuthService:
         salt_hex: str = salt.hex()
         keyring.set_password(self.KEYRING_SERVICE, username, salt_hex)
         logger.info(
-            "Salt gerado e armazenado no keyring para o usuário '%s'.",
-            username,
+            "Salt gerado e armazenado no keyring para cadastro."
         )
 
         # 2. Derivar chave com Argon2id
@@ -132,7 +131,7 @@ class AuthService:
 
         # 5. Gerar e retornar JWT
         token: str = self._generate_jwt(username, jwt_secret)
-        logger.info("Cadastro concluído com sucesso para '%s'.", username)
+        logger.info("Cadastro concluído com sucesso.")
         return token
 
     def login(self, username: str, password: str) -> str:
@@ -186,7 +185,7 @@ class AuthService:
 
         # 5. Gerar e retornar JWT
         token: str = self._generate_jwt(username, jwt_secret)
-        logger.info("Login bem-sucedido para '%s'.", username)
+        logger.info("Login bem-sucedido.")
         return token
 
     def derive_key(self, password: str, salt: bytes) -> str:

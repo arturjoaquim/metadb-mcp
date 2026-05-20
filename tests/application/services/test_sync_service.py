@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from application.services.sync_service import SyncService
 
 class TestSyncService:
@@ -16,6 +16,35 @@ class TestSyncService:
         mock.get_default_schema.return_value = "public"
         mock.get_inspector.return_value = MagicMock()
         return mock
+
+    @patch("application.services.sync_service.logger")
+    def test_sync_tables_logs_each_stage(self, mock_logger, mock_secure_conn, mock_extractor):
+        """Verifica que o método sync_tables registra logs em cada etapa do processo."""
+        mock_metadata_dao_class = MagicMock()
+        mock_conn_dao_class = MagicMock()
+        
+        service = SyncService(
+            mock_secure_conn, 
+            lambda *args, **kwargs: mock_extractor,
+            connection_dao_class=mock_conn_dao_class,
+            metadata_dao_class=mock_metadata_dao_class
+        )
+        
+        service.sync_tables(
+            "conn", ["users"], "postgres", "h", 5432, "u", "p", "db"
+        )
+        
+        # Verificar se logger.info foi chamado múltiplas vezes
+        assert mock_logger.info.call_count >= 5
+        
+        # Verificar a presença de logs específicos
+        calls = [call[0][0] for call in mock_logger.info.call_args_list]
+        assert any("Iniciando sincronização de metadados" in c for c in calls)
+        assert any("Obtendo sessão ativa" in c for c in calls)
+        assert any("Persistindo informações de conexão" in c for c in calls)
+        assert any("Processando tabela" in c for c in calls)
+        assert any("Extraindo colunas" in c for c in calls)
+        assert any("Confirmando transação" in c for c in calls)
 
     def test_sync_tables_skips_samples_for_sensitive_tables(self, mock_secure_conn, mock_extractor):
         # Setup

@@ -9,11 +9,13 @@ from infrastructure.database.adapters.oracle_metadata_extractor import (
 class TestOracleMetadataExtractorInitializeDrivers:
     """Testes para o método initialize_drivers."""
 
+    @patch("infrastructure.database.adapters.oracle_metadata_extractor.os.path.isdir")
     @patch("infrastructure.database.adapters.oracle_metadata_extractor.oracledb")
     def test_initialize_drivers_calls_init_with_lib_dir_when_path_provided(
-        self, mock_oracledb: MagicMock
+        self, mock_oracledb: MagicMock, mock_isdir: MagicMock
     ) -> None:
         """Quando driver_path é fornecido, deve chamar init_oracle_client com lib_dir."""
+        mock_isdir.return_value = True
         extractor = OracleMetadataExtractor(
             host="localhost",
             port=1521,

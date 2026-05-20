@@ -3,6 +3,17 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [7.1.4] - 2026-05-19
+### Changed
+- Adicionado logging detalhado a cada etapa do processo de sincronização no método `SyncService.sync_tables`.
+
+### Fixed
+- Corrigida a inicialização de drivers do Oracle no extrator de metadados (`OracleMetadataExtractor`) dentro do ambiente de testes unitários mockando o método `os.path.isdir`.
+- Corrigido teste obsoleto do `DashboardService.test_get_tables_persists_connection` para validar o retorno correto das tabelas e tabelas sincronizadas ao invés do salvamento de conexão.
+
+### Security
+- Removido o log do `username` do usuário nos logs de geração de salt, registro e login no `AuthService` para sanar vulnerabilidade de exposição de credenciais.
+
 ## [7.1.3] - 2026-05-07
 ### Fixed
 - Corrigida a falha na exibição do estado de sincronização e sensibilidade das tabelas no dashboard. A solução implementa comparação *case-insensitive* entre os nomes retornados pelo banco remoto e os metadados do cache local.

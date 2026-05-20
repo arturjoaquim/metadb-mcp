@@ -37,6 +37,7 @@ ORACLE_SYSTEM_SCHEMAS: Set[str] = {
     "ORDS_PUBLIC_USER",
     "ORDS_METADATA",
     "XS$NULL",
+    "VECSYS",
 }
 
 # Prefixos de schemas do Oracle que devem ser excluídos da listagem.
@@ -59,8 +60,10 @@ class OracleMetadataExtractor(BaseMetadataExtractor):
         if not self.driver_path:
             return
 
+        expanded_path: str = os.path.expanduser(self.driver_path.strip())
+
         # Normaliza o caminho: remove espaços e resolve componentes redundantes
-        normalized_path: str = os.path.normpath(self.driver_path.strip())
+        normalized_path: str = os.path.normpath(expanded_path)
 
         # Em sistemas POSIX (Linux/macOS), tenta corrigir caminhos relativos
         # adicionando '/' no início. Em Windows, caminhos começam com letra de disco.
