@@ -3,6 +3,15 @@ Todos os registros de modificação notáveis deste projeto serão documentados 
 
 O formato baseia-se em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/), e este projeto adere ao [Semantic Versioning](https://semver.org/).
 
+## [8.0.0] - 2026-05-20
+### Changed
+- [BREAKING CHANGE] Renomeada MCP Tool `get_table_description` → `get_table_info` para melhor clareza semântica (retorna comentário + sensibilidade + amostras coletadas).
+- Padronização completa das docstrings de todas as 8 MCP Tools com template consistente: Propósito (quando usar) → Argumentos (formato padronizado) → Retorno (formato explícito).
+- Melhorias na clareza dos textos de documentação das tools para orientar melhor modelos de IA na exploração de bancos de dados.
+
+### Removed
+- [BREAKING CHANGE] Removida MCP Tool `get_table_comments` (era redundante com `get_table_info`). Use `get_table_info` ou `get_column_comments` em seu lugar.
+
 ## [7.2.0] - 2026-05-19
 ### Added
 - Teste de integração (`test_sync_service_oracle.py`) para validar as transações isoladas e captura de erros globais no Oracle.

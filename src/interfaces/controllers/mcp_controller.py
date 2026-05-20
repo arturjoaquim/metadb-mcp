@@ -18,10 +18,14 @@ def init_mcp_controller(metadata_service: MetadataService) -> FastMCP:
     @mcp.tool()
     async def list_sync_tables() -> str:
         """Lista todas as tabelas sincronizadas no cache local.
-        IMPORTANTE: Use esta ferramenta APENAS se você não tiver NENHUMA informação sobre as tabelas disponíveis (como trechos de nomes ou colunas).
-        Se você já tiver um palpite ou parte do nome/descrição da tabela, prefira usar 'search_metadata'.
+
+        Use quando não souber nenhuma informação sobre as tabelas disponíveis. Se tiver um palpite ou conceito de negócio, prefira usar 'search_metadata' para busca direcionada.
+
+        Argumentos:
+            Nenhum.
+
         Retorno:
-            Lista formatada com '- schema.tabela'."""
+            Formato: Lista de tabelas em formato '- schema.tabela [🔒 SENSÍVEL]' (tag sensível aparece se aplicável)."""
         error = _require_unlocked()
         if error:
             return error
@@ -33,14 +37,17 @@ def init_mcp_controller(metadata_service: MetadataService) -> FastMCP:
     async def get_table_columns(
         table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None
     ) -> str:
-        """Retorna o esquema detalhado (colunas, tipos de dados e nulidade) de uma tabela específica.
-        Utilize esta ferramenta para construir queries SQL precisas e entender a tipagem de cada campo.
+        """Retorna o esquema detalhado de uma tabela (colunas, tipos de dados e nulidade).
+
+        Use para construir queries SQL precisas e entender a tipagem de cada campo antes de executar operações.
+
         Argumentos:
-            table_name (str): Nome exato da tabela (ex: 'users'). Obrigatório.
-            schema (Optional[str]): Nome do schema (útil para evitar pegar tabelas com nomes iguais de outros schemas).
-            dbname (Optional[str]): Nome do banco de dados da conexão (útil para desambiguação entre conexões diferentes).
+            table_name (str): Nome exato da tabela. Obrigatório.
+            schema (Optional[str]): Nome do schema para desambiguação. Opcional.
+            dbname (Optional[str]): Nome do banco de dados para desambiguação entre conexões. Opcional.
+
         Retorno:
-            Exemplo de Saída: '- id: INTEGER (NOT NULL)' ou mensagem de erro caso não encontrada."""
+            Formato: '- nome_coluna: TIPO_DADOS (NOT NULL|NULL)' em cada linha. Exemplo: '- id: INTEGER (NOT NULL)'."""
         error = _require_unlocked()
         if error:
             return error
@@ -52,14 +59,17 @@ def init_mcp_controller(metadata_service: MetadataService) -> FastMCP:
     async def get_table_indexes(
         table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None
     ) -> str:
-        """Lista todos os índices de uma tabela, indicando unicidade e colunas indexadas.
-        Útil para identificar quais colunas são otimizadas para filtros (WHERE) e ordenação (ORDER BY).
+        """Lista índices de uma tabela, indicando unicidade e colunas indexadas.
+
+        Use para identificar colunas otimizadas para filtros (WHERE), ordenação (ORDER BY) e melhorar performance de queries.
+
         Argumentos:
             table_name (str): Nome exato da tabela. Obrigatório.
-            schema (Optional[str]): Nome do schema. Opcional, mas recomendado para desambiguação.
-            dbname (Optional[str]): Nome do banco de dados. Opcional, mas recomendado para desambiguação.
+            schema (Optional[str]): Nome do schema para desambiguação. Opcional.
+            dbname (Optional[str]): Nome do banco de dados para desambiguação. Opcional.
+
         Retorno:
-            Lista detalhada de índices com suas colunas ou mensagem caso a tabela não exista."""
+            Formato: '- nome_índice (ÚNICO|NÃO ÚNICO): colunas = col1, col2' em cada linha."""
         error = _require_unlocked()
         if error:
             return error
@@ -71,14 +81,17 @@ def init_mcp_controller(metadata_service: MetadataService) -> FastMCP:
     async def get_table_constraints(
         table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None
     ) -> str:
-        """Retorna restrições de integridade, como Chaves Primárias (PRIMARY KEY) e Chaves Estrangeiras (FOREIGN KEY).
-        ESSENCIAL para entender como realizar JOINs entre tabelas e identificar identificadores únicos.
+        """Retorna restrições de integridade: Chaves Primárias (PRIMARY KEY) e Estrangeiras (FOREIGN KEY).
+
+        Use para entender relações entre tabelas, realizar JOINs corretos e identificar identificadores únicos.
+
         Argumentos:
             table_name (str): Nome exato da tabela. Obrigatório.
-            schema (Optional[str]): Nome do schema. Opcional, mas recomendado.
-            dbname (Optional[str]): Nome do banco de dados. Opcional, mas recomendado.
+            schema (Optional[str]): Nome do schema para desambiguação. Opcional.
+            dbname (Optional[str]): Nome do banco de dados para desambiguação. Opcional.
+
         Retorno:
-            Detalhes das constraints, incluindo tabelas e colunas referenciadas em caso de FK."""
+            Formato: '- nome_constraint (TIPO): colunas referenciadas' em cada linha. FKs incluem tabela e coluna alvo."""
         error = _require_unlocked()
         if error:
             return error
@@ -90,15 +103,17 @@ def init_mcp_controller(metadata_service: MetadataService) -> FastMCP:
     async def get_domain_context(
         table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None
     ) -> str:
-        """Fornece uma visão prática dos dados reais (amostra de dados) para entender o domínio de negócio.
-        IMPORTANTE: Se a tabela for marcada como 'SENSÍVEL' durante a sincronização, esta ferramenta retornará um aviso e nenhuma amostra será exibida por questões de segurança.
-        Use esta ferramenta quando o nome da coluna for ambíguo ou para entender padrões de valores (ex: formatos de data, enums, prefixos).
+        """Fornece amostras de dados reais para compreender o domínio de negócio e padrões de valores.
+
+        Use para validar entendimento de tipos de dados, formatos (datas, enums, prefixos) e ver dados reais. AVISO: Tabelas marcadas como SENSÍVEL não exibem amostras por proteção de segurança.
+
         Argumentos:
             table_name (str): Nome exato da tabela. Obrigatório.
-            schema (Optional[str]): Nome do schema. Opcional, mas recomendado.
-            dbname (Optional[str]): Nome do banco de dados. Opcional, mas recomendado.
+            schema (Optional[str]): Nome do schema para desambiguação. Opcional.
+            dbname (Optional[str]): Nome do banco de dados para desambiguação. Opcional.
+
         Retorno:
-            Dados da amostra em formato JSON/string ou mensagem de proteção para tabelas sensíveis."""
+            Formato: Linhas de dados em formato string/JSON, ou aviso se tabela for sensível ou sem amostras."""
         error = _require_unlocked()
         if error:
             return error
@@ -107,36 +122,66 @@ def init_mcp_controller(metadata_service: MetadataService) -> FastMCP:
 
 
     @mcp.tool()
-    async def get_table_description(
+    async def get_table_info(
         table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None
     ) -> str:
-        """Retorna o comentário descritivo (propósito) de uma tabela específica.
-        Utilize esta ferramenta quando você já tiver o nome da tabela mas precisar entender seu contexto de negócio.
+        """Retorna informações de uma tabela: comentário descritivo, sensibilidade e quantidade de amostras coletadas.
+
+        Use para entender o propósito e contexto de negócio de uma tabela antes de explorar colunas e dados.
+
         Argumentos:
             table_name (str): Nome exato da tabela. Obrigatório.
-            schema (Optional[str]): Nome do schema. Opcional.
-            dbname (Optional[str]): Nome do banco de dados. Opcional.
+            schema (Optional[str]): Nome do schema para desambiguação. Opcional.
+            dbname (Optional[str]): Nome do banco de dados para desambiguação. Opcional.
+
         Retorno:
-            O comentário da tabela ou mensagem de erro."""
+            Formato: Comentário descritivo, indicador de sensibilidade (SIM/NÃO) e número de amostras coletadas."""
         error = _require_unlocked()
         if error:
             return error
             
-        return metadata_service.get_table_description(table_name, schema, dbname)
+        return metadata_service.get_table_info(table_name, schema, dbname)
 
 
     @mcp.tool()
     async def search_metadata(query: str) -> str:
-        """Realiza uma busca textual nos nomes e comentários (descrições) de tabelas e colunas.
-        Use esta ferramenta para localizar tabelas ou colunas quando você NÃO conhece o nome exato, mas tem um palpite ou conceito de negócio (ex: 'email', 'cobrança').
+        """Busca textual em nomes e comentários de tabelas e colunas.
+
+        Use para localizar tabelas ou colunas quando não souber o nome exato, mas tiver um palpite ou conceito de negócio (ex: 'email', 'cobrança', 'pedido').
+
         Argumentos:
-            query (str): Termo de busca (nome ou conceito de negócio). Obrigatório.
+            query (str): Termo de busca. Obrigatório.
+
         Retorno:
-            Lista de tabelas e colunas que contenham o termo pesquisado em seus nomes ou comentários."""
+            Formato: Tabelas encontradas com seus comentários, seguidas de colunas encontradas com suas tabelas de origem."""
         error = _require_unlocked()
         if error:
             return error
             
         return metadata_service.search_metadata(query)
+
+
+
+
+    @mcp.tool()
+    async def get_column_comments(
+        table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None
+    ) -> str:
+        """Retorna comentários descritivos de todas as colunas de uma tabela.
+
+        Use para entender a semântica e significado de cada coluna. Essencial para identificar corretamente quais colunas são relevantes para suas queries.
+
+        Argumentos:
+            table_name (str): Nome exato da tabela. Obrigatório.
+            schema (Optional[str]): Nome do schema para desambiguação. Opcional.
+            dbname (Optional[str]): Nome do banco de dados para desambiguação. Opcional.
+
+        Retorno:
+            Formato: '- nome_coluna - comentário descritivo' em cada linha. Exemplo: '- email - Endereço de email do usuário'."""
+        error = _require_unlocked()
+        if error:
+            return error
+            
+        return metadata_service.get_column_comments(table_name, schema, dbname)
 
     return mcp

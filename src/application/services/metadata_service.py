@@ -191,8 +191,8 @@ class MetadataService:
         finally:
             session.close()
 
-    def get_table_description(self, table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None) -> str:
-        """Retorna o comentário descritivo de uma tabela específica."""
+    def get_table_info(self, table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None) -> str:
+        """Retorna informações de uma tabela: comentário descritivo, sensibilidade e quantidade de amostras coletadas."""
         table_name = table_name.lower()
         if schema:
             schema = schema.lower()
@@ -212,6 +212,33 @@ class MetadataService:
                 f"- Sensível: {sensitive_info}\n"
                 f"- Amostra coletada: {table.sample_size} linhas"
             )
+        finally:
+            session.close()
+
+    def get_column_comments(self, table_name: str, schema: Optional[str] = None, dbname: Optional[str] = None) -> str:
+        """Retorna os comentários descritivos de todas as colunas de uma tabela."""
+        table_name = table_name.lower()
+        if schema:
+            schema = schema.lower()
+            
+        session = self._secure_conn.get_session()
+        try:
+            metadata_dao = self._metadata_dao_class(session)
+            tables = metadata_dao.get_tables(table_name, schema, dbname)
+            table, error_msg = self._validate_tables(session, tables, table_name)
+            if error_msg or not table:
+                return str(error_msg)
+
+            columns = metadata_dao.get_columns_by_table_id(int(str(table.id)))
+            if not columns:
+                return f"Nenhuma coluna encontrada para '{table_name}'."
+
+            result = []
+            for col in columns:
+                comment = col.comment if col.comment else "Sem comentário"
+                result.append(f"- {col.column_name} - {comment}")
+            
+            return "\n".join(result) if result else f"Nenhuma coluna com comentário em '{table_name}'."
         finally:
             session.close()
 
